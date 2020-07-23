@@ -26,7 +26,8 @@ from MyModule import DQN
 
 timeScale  = 4    # １秒間で何回座標計算するか？
 fieldScale = 1.5  # 競技場の広さ
-turnEnd    = 40   # 何ターンで１試合を終了させるか
+#turnEnd    = 40   # 何ターンで１試合を終了させるか
+turnEnd    = 10   # 何ターンで１試合を終了させるか
 
 
 # クォータニオンからオイラー角への変換
@@ -155,7 +156,7 @@ class RandomBot():
         
         return state
 
-
+    # クラス生成時に最初に呼ばれる
     def __init__(self, bot_name, color='r', Sim_flag=True):
         self.name     = bot_name                                        # bot name 
         self.vel_pub  = rospy.Publisher('cmd_vel', Twist, queue_size=1) # velocity publisher
@@ -192,7 +193,7 @@ class RandomBot():
         self.debug_gazebo_enemy_x = np.nan
         self.debug_gazebo_enemy_y = np.nan
         if self.debug_use_gazebo_my_pos is False:
-            if self.my_color == 'r' : rospy.Subscriber("amcl_pose",  PoseWithCovarianceStamped, self.callback_amcl_pose)
+            if self.my_color == 'r' : rospy.Subscriber("amcl_pose", PoseWithCovarianceStamped, self.callback_amcl_pose)
             if self.my_color == 'b' : rospy.Subscriber("amcl_pose", PoseWithCovarianceStamped, self.callback_amcl_pose)
         if self.debug_use_gazebo_enemy_pos is False:
             self.pos[6] = 1.3 if self.my_color == 'r' else -1.3
@@ -315,7 +316,8 @@ class RandomBot():
             print('')
         
         # Actionに従った行動  目的地の設定 (X, Y, Yaw)
-        self.setGoal(desti[0], desti[1], yaw)
+        self.setGoal(-0.3, 0, 0)
+        #self.setGoal(desti[0], desti[1], yaw)
         #self.restart()  # ******* 強制Restart用 *******
         
         # Action後の状態と報酬を取得
@@ -345,6 +347,17 @@ class RandomBot():
         self.reward = reward
         
         return Twist()
+        
+        #value = random.randint(1,1000)
+        #if   value <  250 : x =  0.2; th =  0
+        #elif value <  500 : x = -0.2; th =  0
+        #elif value <  750 : x =  0.0; th =  1
+        #elif value < 1000 : x =  0.0; th = -1
+        #else              : x =  0.0; th =  0
+        #twist = Twist()
+        #twist.linear.x = x; twist.linear.y = 0; twist.linear.z = 0
+        #twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = th
+        #return twist
 
 
     # シュミレーション再開
@@ -368,7 +381,9 @@ class RandomBot():
 
         goal = MoveBaseGoal()
         name = 'red_bot' if self.my_color == 'r' else 'blue_bot'
-        goal.target_pose.header.frame_id = name + '/map' if self.sim_flag == True else 'map'
+        #goal.target_pose.header.frame_id = name + '/map' if self.sim_flag == True else 'map'
+        goal.target_pose.header.frame_id = "map"
+
         goal.target_pose.header.stamp = rospy.Time.now()
         goal.target_pose.pose.position.x = x
         goal.target_pose.pose.position.y = y
@@ -388,26 +403,28 @@ class RandomBot():
 
         return 0
 
+
+    # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+    # _/ 戦略部(繰り返し処理を行わせる)
+    # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     def strategy(self):
         
         rospy_Rate = timeScale
         r = rospy.Rate(rospy_Rate) # １秒間に送る送信回数 (change speed 1fps)
         
         # Qネットワークとメモリ、Actorの生成--------------------------------------------------------
-        #learning_rate = 0.00001         # Q-networkの学習係数
-        #memory_size   = 10000           # バッファーメモリの大きさ
         learning_rate = 0.0005          # Q-networkの学習係数
         memory_size   = 400             # バッファーメモリの大きさ
         self.mainQN   = DQN.QNetwork(learning_rate=learning_rate)   # メインのQネットワーク
         self.targetQN = DQN.QNetwork(learning_rate=learning_rate)   # 価値を計算するQネットワーク
         self.memory   = DQN.Memory(max_size=memory_size)
         self.actor    = DQN.Actor()
-        if self.sim_flag == True:
-            self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
-        else:
-            self.mainQN.model.load_weights('../wss/Yoshihama0901_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
         
+        # 重みの読み込み
+        if self.sim_flag == True : self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
+        else                     : self.mainQN.model.load_weights('../wss/Yoshihama0901_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
         self.targetQN.model.set_weights(self.mainQN.model.get_weights())
+
         while not rospy.is_shutdown():
             
             twist = self.calcTwist()    # 移動距離と角度を計算
@@ -433,6 +450,9 @@ class RandomBot():
             
             r.sleep()
         
+    # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+    # _/ カメラ画像読込み部分(多分変える事はないと思う)
+    # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     def imageCallback(self, data):
         try:
             self.img = self.bridge.imgmsg_to_cv2(data, "bgr8")
@@ -537,14 +557,13 @@ if __name__ == '__main__':
     #   ・リセット動作を行わない
     #   ・学習を行わない
     #   ・確率でのランダム動作を行わない
-    Sim_flag = False
+    Sim_flag = True
     
     rname = rosparam.get_param('randomRun/rname')
-    rside = rosparam.get_param('randomRun/rside')
-    if rname == 'red_bot' or rside == 'r':
-        color = 'r'
-    else:
-        color = 'b'
+    rside = rosparam.get_param('randomRun/rname')
+    if rname == 'red_bot' or rside == 'r': color = 'r'
+    else                                 : color = 'b'
+    print('****************', rname, rside, color)
     
     rospy.init_node('IntegAI_run')    # 初期化宣言 : このソフトウェアは"IntegAI_run"という名前
     bot = RandomBot('Team Integ AI', color=color, Sim_flag=Sim_flag)
