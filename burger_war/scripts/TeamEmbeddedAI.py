@@ -316,8 +316,7 @@ class RandomBot():
             print('')
         
         # Actionに従った行動  目的地の設定 (X, Y, Yaw)
-        self.setGoal(-0.3, 0, 0)
-        #self.setGoal(desti[0], desti[1], yaw)
+        self.setGoal(desti[0], desti[1], yaw)
         #self.restart()  # ******* 強制Restart用 *******
         
         # Action後の状態と報酬を取得
