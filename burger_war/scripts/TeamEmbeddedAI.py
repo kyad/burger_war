@@ -163,6 +163,7 @@ class RandomBot():
         self.vel_pub  = rospy.Publisher('cmd_vel', Twist, queue_size=1) # velocity publisher
         self.sta_pub  = rospy.Publisher("/gazebo/model_states", ModelStates, latch=True) # 初期化用
         self.timer    = 0                                               # 対戦時間
+        self.time     = 0.0                                             # 対戦時間(審判から取得)
         self.reward   = 0.0                                             # 報酬
         self.my_color = color                                           # 自分の色情報
         self.en_color = 'b' if color=='r' else 'r'                      # 相手の色情報
@@ -216,19 +217,24 @@ class RandomBot():
     # スコア情報の更新(war_stateのコールバック関数)
     def callback_war_state(self, data):
         json_dict = json.loads(data.data)                  # json辞書型に変換
+        self.time = json_dict['time']
+        print('Time : ', self.time)
         self.score[0] = json_dict['scores'][self.my_color] # 自分のスコア
         self.score[1] = json_dict['scores'][self.en_color] # 相手のスコア
         if json_dict['state'] == 'running':
             try:
-                for i in range(18):
-                    #print('*********', len(json_dict['targets']))
+                #for i in range(18):
+                for i in range(12):
                     player = json_dict['targets'][i]['player']
-                    if player == self.my_color : self.score[2+i] =  float(json_dict['targets'][i]['point'])
-                    if player == self.en_color : self.score[2+i] = -float(json_dict['targets'][i]['point'])
+                    #if player == self.my_color : self.score[2+i] =  float(json_dict['targets'][i]['point'])
+                    if player == self.my_color : self.score[8+i] =  float(json_dict['targets'][i]['point'])
+                    #if player == self.en_color : self.score[2+i] = -float(json_dict['targets'][i]['point'])
+                    if player == self.en_color : self.score[8+i] = -float(json_dict['targets'][i]['point'])
                 if self.my_color == 'b':                           # 自分が青色だった場合、相手と自分を入れ替える
                     for i in range(3) : self.score[2+i], self.score[5+i] = self.score[5+i], self.score[2+i]
             except:
-                print('callback_war_state: Invalid input ' + e)
+                #print('callback_war_state: Invalid input ' + e)
+                print('callback_war_state: Invalid input ')
 
     # 位置情報の更新(amcl_poseのコールバック関数)
     def callback_amcl_pose(self, data):
@@ -291,12 +297,12 @@ class RandomBot():
 
 
     # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-    # _/ 行動計算のメイン部
+    # _/ 行動計算のメイン部F
     # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     def calcTwist(self):
         
         self.timer += 1
-        
+
         # 行動を決定する
         #action, linear, angle = self.actor.get_action(self.state, 1, self.mainQN)
         action = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag)
@@ -366,7 +372,8 @@ class RandomBot():
         self.memory.reset()
         self.score  = np.zeros(20)
         self.timer  = 0
-        self.reward = 0
+        self.time   = 0.0
+        self.reward = 0.0
         subprocess.call('bash ../catkin_ws/src/burger_war/burger_war/scripts/reset_state.sh', shell=True)
         #r.sleep()
 

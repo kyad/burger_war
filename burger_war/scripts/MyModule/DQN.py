@@ -298,7 +298,7 @@ class Actor:
             #if bot_color == 'r' : print('Learned')
             
             retTargetQs = mainQN.model.predict(state)             # (1, 16, 16, 1)
-            if bot_color == 'r' : print_state_At(retTargetQs, 0)  # 予測結果を表示
+            #if bot_color == 'r' : print_state_At(retTargetQs, 0)  # 予測結果を表示
             #retTargetQs = mainQN.model.predict(state)[0]          # (16, 16, 1)
             retTargetQs = retTargetQs[0]                          # (16, 16, 1)
             retTargetQs = np.reshape(retTargetQs, (16, 16))       # (16, 16)
