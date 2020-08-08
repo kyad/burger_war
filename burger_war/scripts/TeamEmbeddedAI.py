@@ -28,7 +28,7 @@ import rosparam
 from MyModule import DQN
 
 timeScale  = 1    # １秒間で何回座標計算するか？
-timeScale  = 4    # １秒間で何回座標計算するか？
+#timeScale  = 4    # １秒間で何回座標計算するか？
 fieldScale = 1.5  # 競技場の広さ
 #turnEnd    = 40   # 何ターンで１試合を終了させるか
 turnEnd    = 10   # 何ターンで１試合を終了させるか
@@ -277,11 +277,14 @@ class RandomBot():
         
         reward = 0.0
                 
-        # 試合終了
-        #print('+++***+++', self.score)
+        # 試合終了(Time out)
         if self.timer > turnEnd:
             if self.score[0] >  self.score[1] : reward =  1
             if self.score[0] <= self.score[1] : reward = -1
+        
+        # 試合終了(Called game)
+        if self.score[0] - self.score[1] >= 10 : reward =  1  # Win
+        if self.score[1] - self.score[0] >= 10 : reward = -1  # Win
         
         return reward
 
