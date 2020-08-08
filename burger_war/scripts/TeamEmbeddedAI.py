@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+# rosservice call /gazebo/set_logger_level ros.move_base WARN   # [INFO] Log Disappear
+
 import os
 import tf
 import csv
@@ -24,7 +27,7 @@ import rosparam
 # 強化学習DQN (Deep Q Network)
 from MyModule import DQN
 
-#timeScale  = 4    # １秒間で何回座標計算するか？
+timeScale  = 1    # １秒間で何回座標計算するか？
 timeScale  = 4    # １秒間で何回座標計算するか？
 fieldScale = 1.5  # 競技場の広さ
 #turnEnd    = 40   # 何ターンで１試合を終了させるか
@@ -218,18 +221,14 @@ class RandomBot():
     def callback_war_state(self, data):
         json_dict = json.loads(data.data)                  # json辞書型に変換
         self.time = json_dict['time']
-        print('Time : ', self.time)
         self.score[0] = json_dict['scores'][self.my_color] # 自分のスコア
         self.score[1] = json_dict['scores'][self.en_color] # 相手のスコア
         if json_dict['state'] == 'running':
             try:
-                #for i in range(18):
-                for i in range(12):
+                for i in range(18):
                     player = json_dict['targets'][i]['player']
-                    #if player == self.my_color : self.score[2+i] =  float(json_dict['targets'][i]['point'])
-                    if player == self.my_color : self.score[8+i] =  float(json_dict['targets'][i]['point'])
-                    #if player == self.en_color : self.score[2+i] = -float(json_dict['targets'][i]['point'])
-                    if player == self.en_color : self.score[8+i] = -float(json_dict['targets'][i]['point'])
+                    if player == self.my_color : self.score[2+i] =  float(json_dict['targets'][i]['point'])
+                    if player == self.en_color : self.score[2+i] = -float(json_dict['targets'][i]['point'])
                 if self.my_color == 'b':                           # 自分が青色だった場合、相手と自分を入れ替える
                     for i in range(3) : self.score[2+i], self.score[5+i] = self.score[5+i], self.score[2+i]
             except:
@@ -277,21 +276,12 @@ class RandomBot():
     def calc_reward(self):
         
         reward = 0.0
-        
-        # 部分点
-        #reward = ( self.score[0] - self.score[1] ) / 10.0
-        #if reward >  1: reward =  1
-        #if reward < -1: reward = -1
-        
+                
         # 試合終了
         #print('+++***+++', self.score)
         if self.timer > turnEnd:
             if self.score[0] >  self.score[1] : reward =  1
             if self.score[0] <= self.score[1] : reward = -1
-        if self.score[0] >= 100 : reward =  1      # 一本勝ち
-        if self.score[1] >= 100 : reward = -1      # 一本負け
-        if not self.score[2] == 0 : reward =  1    # 一本勝ち
-        if not self.score[5] == 0 : reward = -1    # 一本負け
         
         return reward
 
@@ -319,7 +309,7 @@ class RandomBot():
         yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
         if self.my_color == 'r' :
             #print('****Action****', self.timer, action, desti, yaw*360/np.pi)
-            print('*** Action *** Time=%2d,  Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.timer, self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
+            print('* Action * Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
             print('')
         
         # Actionに従った行動  目的地の設定 (X, Y, Yaw)
@@ -353,17 +343,6 @@ class RandomBot():
         self.reward = reward
         
         return Twist()
-        
-        #value = random.randint(1,1000)
-        #if   value <  250 : x =  0.2; th =  0
-        #elif value <  500 : x = -0.2; th =  0
-        #elif value <  750 : x =  0.0; th =  1
-        #elif value < 1000 : x =  0.0; th = -1
-        #else              : x =  0.0; th =  0
-        #twist = Twist()
-        #twist.linear.x = x; twist.linear.y = 0; twist.linear.z = 0
-        #twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = th
-        #return twist
 
 
     # シュミレーション再開
@@ -381,7 +360,6 @@ class RandomBot():
     # RESPECT @seigot
     # do following command first.
     #   $ roslaunch burger_navigation multi_robot_navigation_run.launch
-    #   $ rosservice call move_base_set_logger_level ros.move_base WARN   # 移動時のログを表示しない
     def setGoal(self,x,y,yaw):
         self.client.wait_for_server()
         #print('setGoal x=', x, 'y=', y, 'yaw=', yaw)
