@@ -9,6 +9,13 @@
 
 <!-- enemy bot run  blue side-->
   <group ns="enemy_bot">
+    <!-- level 0 (Enemy) -->
+    <group if="$(eval enemy_level==0)"> 
+      <include file="$(find burger_war)/launch/enemy.launch">
+        <arg name="name_space" value="enemy_bot" />
+      </include>  
+    </group>
+
     <!-- level 1 (default) -->
     <group if="$(eval enemy_level==1)"> 
       <include file="$(find burger_war)/launch/sim_level_1_cheese.launch">
