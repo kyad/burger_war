@@ -284,7 +284,7 @@ class RandomBot():
         
         # 試合終了(Called game)
         if self.score[0] - self.score[1] >= 10 : reward =  1  # Win
-        if self.score[1] - self.score[0] >= 10 : reward = -1  # Win
+        if self.score[1] - self.score[0] >= 10 : reward = -1  # Loose
         
         return reward
 
