@@ -30,9 +30,9 @@ from MyModule import DQN
 timeScale  = 1    # １秒間で何回座標計算するか？
 #timeScale  = 4    # １秒間で何回座標計算するか？
 fieldScale = 1.5  # 競技場の広さ
-#turnEnd    = 40   # 何ターンで１試合を終了させるか
-turnEnd    = 10   # 何ターンで１試合を終了させるか
-
+#turnEnd    = 10   # 何ターンで１試合を終了させるか
+TimeLimit = 180
+#TimeLimit = 30
 
 # クォータニオンからオイラー角への変換
 def quaternion_to_euler(quaternion):
@@ -278,7 +278,8 @@ class RandomBot():
         reward = 0.0
                 
         # 試合終了(Time out)
-        if self.timer > turnEnd:
+        #if self.timer > turnEnd:
+        if self.time > TimeLimit:
             if self.score[0] >  self.score[1] : reward =  1
             if self.score[0] <= self.score[1] : reward = -1
         
@@ -335,7 +336,6 @@ class RandomBot():
         else                     : learn = 0
         if self.my_color == 'b'  : learn = 0
         batch_size = 40   # Q-networkを更新するバッチの大きさ
-        #batch_size = self.timer - 1   # Q-networkを更新するバッチの大きさ
         gamma = 0.97      # 割引係数
         if (batch_size >= 2 and self.memory.len() > batch_size) and learn:
             #print('call replay timer=', self.timer)
@@ -421,7 +421,8 @@ class RandomBot():
             if self.training == True:
                 # 試合終了した場合
                 if self.my_color == 'r':
-                    if abs(self.reward) == 1 or self.timer > turnEnd:
+                    #if abs(self.reward) == 1 or self.timer > turnEnd:
+                    if abs(self.reward) == 1 or self.time > TimeLimit:
                         if   self.reward == 0 : print('Draw')
                         elif self.reward == 1 : print('Win!')
                         else                  : print('Lose')
@@ -432,7 +433,8 @@ class RandomBot():
                         self.restart()                                          # 試合再開
                         r.sleep()
                 else:
-                    if self.timer % turnEnd == 0 :
+                    #if self.timer % turnEnd == 0 :
+                    if self.time < 10 :
                         self.memory.reset()
                         self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')                # 重みの読み込み
             
