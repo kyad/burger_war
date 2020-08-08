@@ -6,8 +6,12 @@ kill `ps auxww | grep visualizeWindow.py | grep -v grep| awk '{print $2}'`
 gnome-terminal -e "python ../catkin_ws/src/burger_war/judge/judgeServer.py"
 gnome-terminal -e "python ../catkin_ws/src/burger_war/judge/visualizeWindow.py"
 
-rosnode kill /blue_bot/send_id_to_judge
-rosnode kill /red_bot/send_id_to_judge
+
+# rosnode kill /enemy_bot/send_id_to_judge
+# rosnode kill /send_id_to_judge
+
+# rosnode kill /blue_bot/send_id_to_judge
+# rosnode kill /red_bot/send_id_to_judge
 
 bash ../catkin_ws/src/burger_war/judge/test_scripts/init_single_play.sh ../catkin_ws/src/burger_war/judge/marker_set/sim.csv localhost:5000 you enemy
 

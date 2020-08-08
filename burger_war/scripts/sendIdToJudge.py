@@ -15,7 +15,8 @@ from aruco_msgs.msg import MarkerArray
 import requests
 import json
 from time import sleep
-
+from requests.packages.urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 
 class TargetId(object):
 
@@ -29,18 +30,38 @@ class TargetId(object):
         self.init_code = init_code
 
     def sendToJudge(self, target_id):
+
         data = {"name": self.player_name, "side": self.side, "id": target_id}
-        res = requests.post(self.judge_url,
-                            json.dumps(data),
-                            headers={'Content-Type': 'application/json'}
-                            )
-        return res
+
+        s = requests.Session()
+
+        retries = Retry(total=5,
+                        backoff_factor=1,
+                        status_forcelist=[500, 502, 503, 504])
+        s.mount('http://', HTTPAdapter(max_retries=retries))
+        s.mount('https://', HTTPAdapter(max_retries=retries))
+        try:
+            res = s.request('POST', url=self.judge_url,data=json.dumps(data), timeout=1, headers={'Content-Type': 'application/json'})
+        # ============ Or below code =======================
+        # res = s.post(url=self.judge_url,
+        #                headers={'Content-Type': 'application/json'},
+        #                data=json.dumps(data),
+        #                stream=True,
+        #                timeout=(10.0, 30.0))
+        # r.raise_for_status()
+        except Exception as e:
+            print(e.args)
+            return False
+        else:
+            print(res.status_code)
+            return res
 
     def sendInitCode(self):
         try:
             res = self.sendToJudge(self.init_code)
-        except:
+        except Exception as e:
             print("Requests Error Please Check URL " + self.judge_url)
+            print(e.args)
             return False
         else:
             print("Send " + self.init_code + " as init code To " + self.judge_url)
@@ -79,8 +100,9 @@ class TargetId(object):
             #     return
             try:
                 resp_raw = self.sendToJudge(target_id)
-            except:
+            except  Exception as e:
                 print("Try Send " + target_id + " but, Requests Error Please Check URL " + self.judge_url)
+                print(e.args)
             else:
                 resp = json.loads(resp_raw.text)
                 print("Send " + target_id + " To " + self.judge_url)
@@ -112,10 +134,23 @@ class WarStatePublisher(object):
         self.vel_pub = rospy.Publisher('war_state', String, queue_size=1)
 
     def publishWarState(self):
-        resp = requests.get(self.judge_url)
-        msg = resp.text
-        self.vel_pub.publish(msg)
-        return msg
+        s = requests.Session()
+
+        retries = Retry(total=5,
+                        backoff_factor=1,
+                        status_forcelist=[500, 502, 503, 504])
+        s.mount('http://', HTTPAdapter(max_retries=retries))
+        s.mount('https://', HTTPAdapter(max_retries=retries))
+        try:
+            resp = s.request('GET', url=self.judge_url,timeout=1, headers={'Content-Type': 'application/json'})
+        except Exception as e:
+            print(e.args)
+            return False
+        else:
+            resp = requests.get(self.judge_url)
+            msg = resp.text
+            self.vel_pub.publish(msg)
+            return msg
 
 
 if __name__ == "__main__":
