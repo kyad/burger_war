@@ -161,13 +161,13 @@ class RandomBot():
         # 位置情報
         my_angle = quaternion_to_euler(Quaternion(self.pos[2], self.pos[3], self.pos[4], self.pos[5]))
         #my_pos = get_pos_matrix(self.pos[0], self.pos[1])                      # 自分の位置
-        self.my_pos = get_pos_matrix(self.pos[0], self.pos[1]) + 0.5*self.my_pos  # 自分の位置
-        self.my_pos = np.clip(self.my_pos, 0, 1)                                  # 自分の位置
-        my_pos = self.my_pos
+        self.my_pos = get_pos_matrix(self.pos[0], self.pos[1]) + 0.5*self.my_pos  # 自分の位置(軌跡対応)
+        self.my_pos = np.clip(self.my_pos, 0, 1)                                  # 自分の位置(軌跡対応)
+        my_pos = self.my_pos                                                      # 自分の位置(軌跡対応)
         #en_pos = get_pos_matrix(self.pos[6], self.pos[7])  # 相手の位置
-        self.en_pos = get_pos_matrix(self.pos[6], self.pos[7]) + 0.5*self.en_pos # 相手の位置
-        self.en_pos = np.clip(self.en_pos, 0, 1)                                 # 相手の位置
-        en_pos = self.en_pos
+        self.en_pos = get_pos_matrix(self.pos[6], self.pos[7]) + 0.5*self.en_pos # 相手の位置(軌跡対応)
+        self.en_pos = np.clip(self.en_pos, 0, 1)                                 # 相手の位置(軌跡対応)
+        en_pos = self.en_pos                                                     # 相手の位置(軌跡対応)
         my_ang = get_ang_matrix(my_angle.z)                                    # 自分の向き
         
         # 審判情報の更新(点数)
