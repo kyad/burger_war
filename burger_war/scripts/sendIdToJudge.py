@@ -35,7 +35,7 @@ class TargetId(object):
 
         s = requests.Session()
 
-        retries = Retry(total=5,
+        retries = Retry(total=10,
                         backoff_factor=1,
                         status_forcelist=[500, 502, 503, 504])
         s.mount('http://', HTTPAdapter(max_retries=retries))
@@ -51,7 +51,6 @@ class TargetId(object):
         # r.raise_for_status()
         except Exception as e:
             print(e.args)
-            return False
         else:
             print(res.status_code)
             return res
@@ -136,7 +135,7 @@ class WarStatePublisher(object):
     def publishWarState(self):
         s = requests.Session()
 
-        retries = Retry(total=5,
+        retries = Retry(total=10,
                         backoff_factor=1,
                         status_forcelist=[500, 502, 503, 504])
         s.mount('http://', HTTPAdapter(max_retries=retries))
@@ -145,7 +144,6 @@ class WarStatePublisher(object):
             resp = s.request('GET', url=self.judge_url,timeout=1, headers={'Content-Type': 'application/json'})
         except Exception as e:
             print(e.args)
-            return False
         else:
             resp = requests.get(self.judge_url)
             msg = resp.text
