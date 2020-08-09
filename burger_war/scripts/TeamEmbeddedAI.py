@@ -90,7 +90,29 @@ def get_ang_matrix(angle, n=16):
     #print(my_ang)
     return my_ang
 
+def fill_score(np_sco, x, y):
+    for i in range(x, x+4):
+        for j in range(y, y+4):
+            np_sco[i, j] = 1
+    
+# 得点ベクトルを返す
+def get_sco_matrix(score, point):
+    np_sco = np.zeros([16, 16])
+    if score[8]  == point : fill_score(np_sco, 12,  4)   #  8:Tomato_N
+    if score[9]  == point : fill_score(np_sco, 12,  8)   #  9:Tomato_S
+    if score[10] == point : fill_score(np_sco,  8,  0)   # 10:Omelette_N
+    if score[11] == point : fill_score(np_sco,  4,  0)   # 11:Omelette_S
+    if score[12] == point : fill_score(np_sco,  8, 12)   # 12:Pudding_N
+    if score[13] == point : fill_score(np_sco,  4, 12)   # 13:Pudding_S
+    if score[14] == point : fill_score(np_sco,  0,  4)   # 14:OctopusWiener_N
+    if score[15] == point : fill_score(np_sco,  0,  8)   # 15:OctopusWiener_S
+    if score[16] == point : fill_score(np_sco,  8,  4)   # 16:FriedShrimp_N
+    if score[17] == point : fill_score(np_sco,  8,  8)   # 17:FriedShrimp_E
+    if score[18] == point : fill_score(np_sco,  4,  4)   # 18:FriedShrimp_W
+    if score[19] == point : fill_score(np_sco,  4,  8)   # 19:FriedShrimp_S
+    return np_sco
 
+'''
 # 得点ベクトルを返す
 def get_sco_matrix(score, point):
     #point = 1
@@ -108,6 +130,7 @@ def get_sco_matrix(score, point):
     if score[18] == point : np_sco[ 7,  7] = 1   # 18:FriedShrimp_W
     if score[19] == point : np_sco[ 7,  8] = 1   # 19:FriedShrimp_S
     return np_sco
+'''
 
 # 自分の側面得点
 def get_side_matrix(side1, side2):
