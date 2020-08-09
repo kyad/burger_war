@@ -329,12 +329,12 @@ class RandomBot():
         self.timer += 1
 
         # 行動を決定する
-        #action, linear, angle = self.actor.get_action(self.state, 1, self.mainQN)
-        action = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag)
         if self.timer == 1:
             action = np.array([5, 11])
             self.action2 = self.action
             self.action = action
+        else:
+            action = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag)
         
         # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
         #pos     = (action - 8) * fieldScale/8                                   # 目的地
