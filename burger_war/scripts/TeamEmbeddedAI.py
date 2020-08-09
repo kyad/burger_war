@@ -31,8 +31,8 @@ timeScale  = 1    # １秒間で何回座標計算するか？
 #timeScale  = 4    # １秒間で何回座標計算するか？
 fieldScale = 1.5  # 競技場の広さ
 #turnEnd    = 10   # 何ターンで１試合を終了させるか
-TimeLimit = 180
-#TimeLimit = 30
+#TimeLimit = 180
+TimeLimit = 30
 
 # クォータニオンからオイラー角への変換
 def quaternion_to_euler(quaternion):
