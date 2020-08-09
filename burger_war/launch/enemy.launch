@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Arguments -->
+    <arg name="name_space" default=""/>
+    <arg name="output" default="screen"/>
+
+    <include file="$(find burger_navigation)/launch/burger_navigation.launch">
+    </include>
+
+    <node pkg="burger_war" type="TeamEmbeddedAI.py" name="enemyRun" output="$(arg output)">
+      <param name="rname" value="blue_bot" />
+      <param name="rside" value="b" />
+    </node>
+</launch>
+
