@@ -160,8 +160,14 @@ class RandomBot():
         
         # 位置情報
         my_angle = quaternion_to_euler(Quaternion(self.pos[2], self.pos[3], self.pos[4], self.pos[5]))
-        my_pos = get_pos_matrix(self.pos[0], self.pos[1])                      # 自分の位置
-        en_pos = get_pos_matrix(self.pos[6], self.pos[7]                    )  # 相手の位置
+        #my_pos = get_pos_matrix(self.pos[0], self.pos[1])                      # 自分の位置
+        self.my_pos = get_pos_matrix(self.pos[0], self.pos[1]) + 0.5*self.my_pos  # 自分の位置
+        self.my_pos = np.clip(self.my_pos, 0, 1)                                  # 自分の位置
+        my_pos = self.my_pos
+        #en_pos = get_pos_matrix(self.pos[6], self.pos[7])  # 相手の位置
+        self.en_pos = get_pos_matrix(self.pos[6], self.pos[7]) + 0.5*self.en_pos # 相手の位置
+        self.en_pos = np.clip(self.en_pos, 0, 1)                                 # 相手の位置
+        en_pos = self.en_pos
         my_ang = get_ang_matrix(my_angle.z)                                    # 自分の向き
         
         # 審判情報の更新(点数)
@@ -191,6 +197,8 @@ class RandomBot():
         self.timer    = 0                                               # 対戦時間
         self.time     = 0.0                                             # 対戦時間(審判から取得)
         self.reward   = 0.0                                             # 報酬
+        self.my_pos   = np.zeros([16, 16])     # My Location
+        self.en_pos   = np.zeros([16, 16])     # En Location
         self.my_color = color                                           # 自分の色情報
         self.en_color = 'b' if color=='r' else 'r'                      # 相手の色情報
         self.score    = np.zeros(20)                                    # スコア情報(以下詳細)
@@ -378,6 +386,8 @@ class RandomBot():
         self.timer  = 0
         self.time   = 0.0
         self.reward = 0.0
+        self.my_pos   = np.zeros([16, 16])     # My Location
+        self.en_pos   = np.zeros([16, 16])     # En Location
         subprocess.call('bash ../catkin_ws/src/burger_war/burger_war/scripts/reset_state.sh', shell=True)
         #r.sleep()
 
