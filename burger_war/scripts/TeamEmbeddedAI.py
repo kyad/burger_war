@@ -583,17 +583,13 @@ if __name__ == '__main__':
     Sim_flag = True
     
     try:
-        rname = rosparam.get_param('randomRun/rname')
-        rside = rosparam.get_param('randomRun/rname')
+        rside = rosparam.get_param('enemyRun/rside')
     except:
-        rname = 'b'
-        rside = 'b'
-    if rname == 'red_bot' or rside == 'r': color = 'r'
-    else                                 : color = 'b'
-    print('****************', rname, rside, color)
+        rside = 'r'
+    print('**************** rside=', rside)
     
     rospy.init_node('IntegAI_run')    # 初期化宣言 : このソフトウェアは"IntegAI_run"という名前
-    bot = RandomBot('Team Integ AI', color=color, Sim_flag=Sim_flag)
+    bot = RandomBot('Team Integ AI', color=rside, Sim_flag=Sim_flag)
     
     bot.strategy()
 

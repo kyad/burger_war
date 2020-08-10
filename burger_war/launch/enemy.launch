@@ -1,5 +1,7 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="side" default="b"/> <!-- "b" = blue side, "r" = red side  -->
+
     <!-- Arguments -->
     <arg name="name_space" default=""/>
     <arg name="output" default="screen"/>
@@ -8,8 +10,7 @@
     </include>
 
     <node pkg="burger_war" type="TeamEmbeddedAI.py" name="enemyRun" output="$(arg output)">
-      <param name="rname" value="blue_bot" />
-      <param name="rside" value="b" />
+      <param name="rside" value="$(arg side)" />
     </node>
 </launch>
 
