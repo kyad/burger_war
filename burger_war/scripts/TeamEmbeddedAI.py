@@ -29,7 +29,8 @@ from MyModule import DQN
 
 timeScale  = 1    # １秒間で何回座標計算するか？
 #timeScale  = 4    # １秒間で何回座標計算するか？
-fieldScale = 1.5  # 競技場の広さ
+#fieldScale = 1.5  # 競技場の広さ
+fieldScale = 2.4  # 競技場の広さ
 #turnEnd    = 10   # 何ターンで１試合を終了させるか
 #TimeLimit = 180
 TimeLimit = 30
@@ -51,8 +52,8 @@ def get_pos_matrix(x, y, n=16):
     #my_pos  = np.array([self.pos[0], self.pos[1]])           # 現在地点
     pos     = np.array([x, y])                                # 現在地点
     rot     = get_rotation_matrix(-45 * np.pi / 180)          # 45度回転行列の定義
-    #rotated = ( np.dot(rot, pos) / fieldScale ) + 0.5         # 45度回転して最大幅1.5で正規化(0-1)
-    rotated = ( np.dot(rot, pos) + 1 ) / 2                    # 回転を行って0-1の範囲にシフト
+    rotated = np.dot(rot, pos) / fieldScale + 0.5         # 45度回転して最大幅1.5で正規化(0-1)
+    #rotated = ( np.dot(rot, pos) + 1 ) / 2                    # 回転を行って0-1の範囲にシフト
     pos_np  = np.zeros([n, n])
     i = int(rotated[0]*n)
     j = int(rotated[1]*n)
@@ -61,6 +62,7 @@ def get_pos_matrix(x, y, n=16):
     if j < 0: j = 0
     if j > 15: j = 15
     pos_np[i][j] = 1
+    #print('*****', x, y, i, j)
     return pos_np
 
 
