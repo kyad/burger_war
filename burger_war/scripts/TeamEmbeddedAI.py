@@ -340,8 +340,10 @@ class RandomBot():
         self.timer += 1
 
         # 行動を決定する
-        if self.timer == 1:
-            action = np.array([5, 11])
+        if self.timer <= 2:
+            #action = np.array([5, 11])
+            if self.timer == 1 : action = np.array([ 6,  9])
+            if self.timer == 2 : action = np.array([10, 10])
             self.action2 = self.action
             self.action = action
         else:
