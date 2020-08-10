@@ -66,6 +66,14 @@ def get_pos_matrix(x, y, n=16):
     return pos_np
 
 
+# 移動先の座標
+def get_destination(action, n=16):
+    pos   = action/n + 1/(2*n)
+    pos   = (pos-1/2)*fieldScale
+    rot   = get_rotation_matrix(45 * np.pi / 180)             # 45度回転行列の定義
+    return np.dot(rot, pos)                                   # 45度回転
+
+
 # 自分が向いている向きを２次元ベクトル(n*n)にして返す
 def get_ang_matrix(angle, n=16):
     while angle > 0 : angle -= 360
