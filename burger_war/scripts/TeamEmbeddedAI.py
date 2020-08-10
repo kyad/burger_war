@@ -32,8 +32,8 @@ timeScale  = 1    # １秒間で何回座標計算するか？
 #fieldScale = 1.5  # 競技場の広さ
 fieldScale = 2.4  # 競技場の広さ
 #turnEnd    = 10   # 何ターンで１試合を終了させるか
-#TimeLimit = 180
-TimeLimit = 30
+TimeLimit = 180
+#TimeLimit = 30
 
 # クォータニオンからオイラー角への変換
 def quaternion_to_euler(quaternion):
@@ -68,8 +68,9 @@ def get_pos_matrix(x, y, n=16):
 
 # 移動先の座標
 def get_destination(action, n=16):
-    pos   = action/n + 1/(2*n)
-    pos   = (pos-1/2)*fieldScale
+    action_f = np.array(action, dtype='float32')
+    pos   = action_f/n + 1.0/(2*n)
+    pos   = (pos-1.0/2)*fieldScale
     rot   = get_rotation_matrix(45 * np.pi / 180)             # 45度回転行列の定義
     return np.dot(rot, pos)                                   # 45度回転
 
@@ -348,9 +349,10 @@ class RandomBot():
         
         # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
         #pos     = (action - 8) * fieldScale/8                                   # 目的地
-        pos     = (action - 8) / 8.0                                            # 目的地
-        rot     = get_rotation_matrix(45 * np.pi / 180)                         # 45度回転行列の定義
-        desti   = np.dot(rot, pos)                                              # 45度回転
+        #pos     = (action - 8) / 8.0                                            # 目的地
+        #rot     = get_rotation_matrix(45 * np.pi / 180)                         # 45度回転行列の定義
+        #desti   = np.dot(rot, pos)                                              # 45度回転
+        desti   = get_destination(action)
         yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
         #print('****Action****', self.timer, action, desti, yaw*360/np.pi)
         print(self.my_color, '* Action * Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
