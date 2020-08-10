@@ -352,12 +352,13 @@ class RandomBot():
         
         # Action後の状態と報酬を取得
         next_state = self.getState()                                            # Action後の状態
-        reward     =  self.calc_reward()                                        # Actionの結果の報酬
+        reward     = self.calc_reward()                                         # Actionの結果の報酬
+        if abs(reward) == 1 : next_state = np.zeros([1, 16, 16, 7])             # 試合終了時は次の状態はない
         
         # メモリの更新する
         self.memory.add((self.state, action, reward, next_state))               # メモリの更新する
-        if abs(reward) == 1 : np.zeros([1, 16, 16, 7])                          # 試合終了時は次の状態はない
-        self.state  = next_state                                                 # 状態更新
+        #if abs(reward) == 1 : np.zeros([1, 16, 16, 7])                          # 試合終了時は次の状態はない
+        self.state  = next_state                                                # 状態更新
         self.action2 = self.action
         self.action = action
         
