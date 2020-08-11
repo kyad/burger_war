@@ -143,15 +143,23 @@ def get_sco_matrix(score, point):
     return np_sco
 '''
 
-# 自分の側面得点
-def get_side_matrix(side1, side2):
+# 自分の側面と背面の得点
+def get_side_matrix(side1, side2, back):
     np_sco = np.zeros([16, 16])
     for i in range(16):
         for j in range(16):
             if not side1 == 0 :
-                if 7 >= i : np_sco[i][j] = 1
+                if 7 >= i :
+                    if 8 <= j : np_sco[i][j] = 1
             if not side2 == 0 :
-                if 8 <= i : np_sco[i][j] = 1
+                if 8 <= i :
+                    if 8 <= j : np_sco[i][j] = 1
+            if not back  == 0 :
+                if 7 >= j :     np_sco[i][j] = 1
+            #if not side1 == 0 :
+            #    if 7 >= i : np_sco[i][j] = 1
+            #if not side2 == 0 :
+            #    if 8 <= i : np_sco[i][j] = 1
     return np_sco
 
 # gazebo座標からamcl_pose座標に変換する
@@ -183,10 +191,10 @@ class RandomBot():
         
         # 審判情報の更新(点数)
         rospy.Subscriber("war_state", String, self.callback_war_state, queue_size=10)
-        my_sco      = get_sco_matrix(self.score,  1)                           # 自分の点数
-        en_sco      = get_sco_matrix(self.score, -1)                           # 相手の点数
-        mySide_sco  = get_side_matrix(self.score[6], self.score[7])            # 自分側面の点数
-        enSide_sco  = get_side_matrix(self.score[3], self.score[4])            # 相手側面の点数
+        my_sco      = get_sco_matrix(self.score,  1)                               # 自分の点数
+        en_sco      = get_sco_matrix(self.score, -1)                               # 相手の点数
+        mySide_sco  = get_side_matrix(self.score[6], self.score[7], self.score[8]) # 自分側面と背面の点数
+        enSide_sco  = get_side_matrix(self.score[3], self.score[4], self.score[5]) # 相手側面と背面の点数
 
         # 状態と報酬の更新( 16 × 16 × 7ch )
         state       = np.concatenate([np.expand_dims(my_pos,     axis=2),
