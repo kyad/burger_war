@@ -9,11 +9,9 @@ import numpy as np
 from collections import deque
 import tensorflow as tf
 from keras import backend as K
-from keras.utils import plot_model
-from keras.models import Model
-from keras.models import Sequential
-from keras.layers import *
 from keras.optimizers import Adam, SGD
+
+from network import resnet, create_unet
 
 # ４次元ベクトルの任意ch内容確認
 def print_state_At(state, index):
@@ -51,138 +49,22 @@ def huberloss(y_true, y_pred):
     return K.mean(loss)
 
 
-
-
-# _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-# U-Net
-#   https://qiita.com/koshian2/items/603106c228ac6b7d8356
-# _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-# U-Net
-def create_block(input, chs):
-    x = input
-    for i in range(2):
-        # オリジナルはpaddingなしだがサイズの調整が面倒なのでPaddingを入れる
-        x = Conv2D(chs, 3, padding="same")(x)
-        x = BatchNormalization()(x)
-        x = Activation("relu")(x)
-    return x
-
-
-def create_unet(size=16, use_skip_connections=True, grayscale_inputs=True):
-    
-    #if grayscale_inputs: input = Input((96,96,1))
-    #else:                input = Input((96,96,3))
-    input = Input((16, 16, 7))
-    
-    # Encoder
-    block1 = create_block(input, 64)
-    x = MaxPool2D(2)(block1)
-    block2 = create_block(x, 128)
-    x = MaxPool2D(2)(block2)
-    #block3 = create_block(x, 256)
-    #x = MaxPool2D(2)(block3)
-    
-    #x = create_block(x, 512)
-    #x = Conv2DTranspose(256, kernel_size=2, strides=2)(x)
-    #if use_skip_connections: x = Concatenate()([block3, x])
-    x = create_block(x, 256)
-    x = Conv2DTranspose(128, kernel_size=2, strides=2)(x)
-    if use_skip_connections: x = Concatenate()([block2, x])
-    x = create_block(x, 128)
-    x = Conv2DTranspose(64, kernel_size=2, strides=2)(x)
-    if use_skip_connections: x = Concatenate()([block1, x])
-    x = create_block(x, 64)
-    
-    # output
-    x = Conv2D(1, 1)(x)
-    
-    #x = Activation("linear")(x)
-    x = Activation("tanh")(x)
-    
-    model  = Model(input, x)
-    
-    return model
-
-
-def cba(inputs, filters, kernel_size, strides):
-    x = Conv2D(filters, kernel_size=kernel_size, strides=strides, padding='same')(inputs)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
-    return x
-
-
-
-
-def _shortcut(inputs, residual):
-
-    # _keras_shape[3] チャンネル数
-    n_filters = residual._keras_shape[3]
-
-    # inputs と residual とでチャネル数が違うかもしれない。
-    # そのままだと足せないので、1x1 conv を使って residual 側のフィルタ数に合わせている
-    shortcut = Convolution2D(n_filters, (1,1), strides=(1,1), padding='valid')(inputs)
-
-    # 2つを足す
-    return add([shortcut, residual])
-
-
-def _resblock(n_filters, strides=(1,1)):
-    def f(input):    
-        x = Convolution2D(n_filters, (3,3), strides=strides, kernel_initializer='he_normal', padding='same')(input)
-        x = BatchNormalization()(x)
-        x = Activation('relu')(x)
-        x = Convolution2D(n_filters, (3,3), strides=strides, kernel_initializer='he_normal', padding='same')(x)
-        x = BatchNormalization()(x)
-
-        return _shortcut(input, x)
-
-    return f
-
-
-def resnet():
-
-    #inputs = Input(shape=(32, 32, 3))
-    inputs = Input(shape=(16, 16, 7))
-    
-    x = Convolution2D(32, (7,7), strides=(1,1), kernel_initializer='he_normal', padding='same')(inputs)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    #x = MaxPooling2D((3, 3), strides=(2,2), padding='same')(x)
-
-    x = _resblock(n_filters=64)(x)
-    x = _resblock(n_filters=64)(x)
-    x = _resblock(n_filters=64)(x)
-    x = _resblock(n_filters=128)(x)
-    x = _resblock(n_filters=128)(x)
-    x = _resblock(n_filters=128)(x)
-    x = BatchNormalization()(x)
-    
-    x = Convolution2D(1, (3,3), strides=(1,1), kernel_initializer='he_normal', padding='same')(x)
-    x = BatchNormalization()(x)
-    x = Convolution2D(1, (3,3), strides=(1,1), kernel_initializer='he_normal', padding='same')(x)
-    x = Activation('linear')(x)
-    
-    model  = Model(inputs, x)
-    
-    return model
-
-
 # [2]Q関数をディープラーニングのネットワークをクラスとして定義
 class QNetwork:
     def __init__(self, learning_rate=0.01):
         self.debug_log = True
-        
+
         self.model = create_unet()
         #self.model = resnet()
-        
+
         #self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
         #self.optimizer = Adam()
-        
+
         #self.optimizer = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
         self.optimizer = SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True)
-        
+
         self.model.compile(loss=huberloss, optimizer=self.optimizer)
-        
+
         if self.debug_log == True:
             self.model.summary()
 
@@ -202,20 +84,20 @@ class QNetwork:
                 # 価値計算（DDQNにも対応できるように、行動決定のQネットワークと価値観数のQネットワークは分離）
                 retmainQs = self.model.predict(next_state_b)[0]    # (16, 16, 1)
                 retmainQs = np.reshape(retmainQs, (16, 16))        # (16, 16)
-                
+
                 # 最大の報酬を返す行動を選択する
                 next_action = np.unravel_index(np.argmax(retmainQs), retmainQs.shape)
                 #if bot_color == 'r' : print_state_At(targetQN.model.predict(next_state_b), 0)
-                
+
                 targetQs    = targetQN.model.predict(next_state_b)[0] # (16, 16, 1)
                 targetQs    = np.reshape(targetQs, (16, 16))          # (16, 16, 1)
                 next_reward = targetQs[next_action[0]][next_action[1]]
-                
+
                 target = reward_b + gamma * next_reward
-                
+
             targets[i] = self.model.predict(state_b)               # Qネットワークの出力
             #if bot_color == 'r' : print(i, reward_b, action_b[0], action_b[1], target, targets[i][action_b[0]])
-            
+
             # 学習する報酬の手調整
             #ban = np.array( [ [4,8], [7,8], [7,7], [8,12], [8,9], [8,8], [8,7], [8,4], [9,9], [9,8], [12,8]  ] )
             for k in range(16):
@@ -224,7 +106,7 @@ class QNetwork:
                     #if k < 1 or l < 1 or k > 14 or l > 14 : targets[i][k][l] = 0                        # 領域外の報酬は０固定
                     #for a in ban:
                     #    if a[0] == k and a[1] == l        : targets[i][k][l] = 0   # 障害物座標の報酬は０固定
-            
+
             targets[i][action_b[0]][action_b[1]] = target          # 教師信号
             np.set_printoptions(precision=1)
             #if bot_color == 'r' : print(i, reward_b, action_b, target)
@@ -264,11 +146,11 @@ class Actor:
 
     # 移動先をランダムに生成
     def generateRandomDestination(self):
-        
+
         # 移動禁止箇所
         #ban = np.array( [ [4,8], [7,8], [7,7], [8,12], [8,9], [8,8], [8,7], [8,4], [9,9], [9,8], [12,8]  ] )
         ban = np.array( [ [99,99] ] )
-        
+
         flag = True
         while flag:
             flag   = False
@@ -285,18 +167,18 @@ class Actor:
         return result
 
     def get_action(self, state, episode, mainQN, bot_color, action_bf, action_bf2, delta_score, sim_flag):   # [C]ｔ＋１での行動を返す
-        
+
         # 徐々に最適行動のみをとる、ε-greedy法
         #epsilon = 0.001 + 0.9 / (1.0+episode)
         if sim_flag : epsilon = 0.1  # 学習時のランダム係数
         else        : epsilon = 0.00  # 実機ではランダム動作を行わない
-        
+
         # 移動禁止箇所
         #ban = np.array( [ [4,8], [7,8], [7,7], [8,12], [8,9], [8,8], [8,7], [8,4], [9,9], [9,8], [12,8]  ] )
-        
+
         if epsilon <= np.random.uniform(0, 1):
             #if bot_color == 'r' : print('Learned')
-            
+
             retTargetQs = mainQN.model.predict(state)             # (1, 16, 16, 1)
             #if bot_color == 'r' : print_state_At(retTargetQs, 0)  # 予測結果を表示
             #retTargetQs = mainQN.model.predict(state)[0]          # (16, 16, 1)
@@ -304,13 +186,13 @@ class Actor:
             retTargetQs = np.reshape(retTargetQs, (16, 16))       # (16, 16)
             action      = np.unravel_index(np.argmax(retTargetQs), retTargetQs.shape)
             action      = np.array(action)
-            
+
             # 学習結果前フィールドと同じで現状負けていたら２～５番目の候補のどれかに変更する
             if ((action[0] == action_bf[0] and action[1] == action_bf[1]) or (action[0] == action_bf2[0] and action[1] == action_bf2[1])) and delta_score <= 0 :
                 if bot_color == 'r' : print('Select Except Top Action')
                 action = self.getIndexAtMaxN(retTargetQs, 2+int(np.random.rand()*9))
                 #action = self.generateRandomDestination()
-            
+
             '''
             # 学習結果が移動禁止箇所だったらランダムを入れておく
             flag   = False
@@ -322,12 +204,10 @@ class Actor:
             else:
                 if bot_color == 'r' : print('Learned')
             '''
-            
+
         else:
             if bot_color == 'r' : print('Random')
             # 移動禁止箇所以外へランダムに行動する
             action = self.generateRandomDestination()
 
         return action
-
-
