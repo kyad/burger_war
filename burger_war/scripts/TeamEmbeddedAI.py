@@ -348,14 +348,13 @@ class RandomBot():
         self.timer += 1
 
         # 行動を決定する
-        if self.timer <= 2:
-            #action = np.array([5, 11])
+        if self.timer > 2:
+            action = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag)
+        else:
             if self.timer == 1 : action = np.array([ 6,  9])
             if self.timer == 2 : action = np.array([10, 10])
             self.action2 = self.action
             self.action = action
-        else:
-            action = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag)
         
         # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
         #pos     = (action - 8) * fieldScale/8                                   # 目的地
@@ -377,23 +376,23 @@ class RandomBot():
         reward     = self.calc_reward()                                         # Actionの結果の報酬
         if abs(reward) == 1 : next_state = np.zeros([1, 16, 16, 7])             # 試合終了時は次の状態はない
         
-        # メモリの更新する
-        self.memory.add((self.state, action, reward, next_state))               # メモリの更新する
-        #if abs(reward) == 1 : np.zeros([1, 16, 16, 7])                          # 試合終了時は次の状態はない
-        self.state  = next_state                                                # 状態更新
-        self.action2 = self.action
-        self.action = action
+        if self.timer > 2:
+            # メモリの更新する
+            self.memory.add((self.state, action, reward, next_state))               # メモリの更新する
+            self.state  = next_state                                                # 状態更新
+            self.action2 = self.action
+            self.action = action
         
-        # Qネットワークの重みを学習・更新する replay
-        if self.training == True : learn = 1
-        else                     : learn = 0
-        if self.my_color == 'b'  : learn = 0
-        batch_size = 40   # Q-networkを更新するバッチの大きさ
-        gamma = 0.97      # 割引係数
-        if (batch_size >= 2 and self.memory.len() > batch_size) and learn:
-            #print('call replay timer=', self.timer)
-            self.mainQN.replay(self.memory, batch_size, gamma, self.targetQN, self.my_color)
-        self.targetQN.model.set_weights(self.mainQN.model.get_weights())
+            # Qネットワークの重みを学習・更新する replay
+            if self.training == True : learn = 1
+            else                     : learn = 0
+            if self.my_color == 'b'  : learn = 0
+            batch_size = 40   # Q-networkを更新するバッチの大きさ
+            gamma = 0.97      # 割引係数
+            if (batch_size >= 2 and self.memory.len() > batch_size) and learn:
+                #print('call replay timer=', self.timer)
+                self.mainQN.replay(self.memory, batch_size, gamma, self.targetQN, self.my_color)
+            self.targetQN.model.set_weights(self.mainQN.model.get_weights())
         
         sys.stdout.flush()
         self.reward = reward
