@@ -14,6 +14,7 @@ import numpy as np
 import sys
 import datetime
 import threading
+import time
 
 from std_msgs.msg import String
 from gazebo_msgs.msg import ModelStates
@@ -499,7 +500,15 @@ class RandomBot():
                     #if self.timer % turnEnd == 0 :
                     if self.time < 10 :
                         self.memory.reset()
-                        self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')                # 重みの読み込み
+                        # 重みの読み込み
+                        while True:
+                            try:
+                                self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')
+                                break
+                            except:
+                                print(self.my_color, 'load_weights error. Retry')
+                                time.sleep(1)
+                        print(self.my_color, 'load_weights OK')
             
             r.sleep()
         
