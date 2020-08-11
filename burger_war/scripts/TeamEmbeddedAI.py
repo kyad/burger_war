@@ -350,6 +350,8 @@ class RandomBot():
 
         # 行動を決定する
         if self.timer > 2:
+            #tmp = np.transpose(self.state, (0, 3, 1, 2))
+            #for i in range(0, 7) : print(i, tmp[0][i])
             action = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag)
         else:
             if self.timer == 1 : action = np.array([ 6,  9])
@@ -358,10 +360,6 @@ class RandomBot():
             self.action = action
         
         # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
-        #pos     = (action - 8) * fieldScale/8                                   # 目的地
-        #pos     = (action - 8) / 8.0                                            # 目的地
-        #rot     = get_rotation_matrix(45 * np.pi / 180)                         # 45度回転行列の定義
-        #desti   = np.dot(rot, pos)                                              # 45度回転
         desti   = get_destination(action)
         yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
         #print('****Action****', self.timer, action, desti, yaw*360/np.pi)
