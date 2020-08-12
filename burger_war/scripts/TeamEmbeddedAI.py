@@ -461,8 +461,13 @@ class RandomBot():
             self.actor    = DQN.Actor()
         
             # 重みの読み込み
-            if self.sim_flag == True : self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
-            else                     : self.mainQN.model.load_weights('../wss/Yoshihama0901_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
+            if self.sim_flag == True :
+                try:
+                    self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
+                except:
+                    print('No weight file found. Train from scratch')
+            else                     :
+                self.mainQN.model.load_weights('../wss/Yoshihama0901_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
             self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
 
