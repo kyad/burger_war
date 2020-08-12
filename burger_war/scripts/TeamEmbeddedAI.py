@@ -329,19 +329,18 @@ class RandomBot():
 
     # 報酬の計算
     def calc_reward(self):
-        
         reward = 0
-                
-        # 試合終了(Time out)
         #if self.timer > turnEnd:
         if self.time > TimeLimit:
-            if self.score[0] >  self.score[1] : reward =  1
-            if self.score[0] <= self.score[1] : reward = -1
-        
-        # 試合終了(Called game)
-        if self.score[0] - self.score[1] >= 10 : reward =  1  # Win
-        if self.score[1] - self.score[0] >= 10 : reward = -1  # Loose
-        
+            # 試合終了(Time out)
+            if self.score[0] > self.score[1]:
+                reward =  1
+            else:
+                reward = -1
+        else:
+            # 試合終了(Called game)
+            if self.score[0] - self.score[1] >= 10 : reward =  1  # Win
+            if self.score[1] - self.score[0] >= 10 : reward = -1  # Lose
         return reward
 
 
@@ -495,8 +494,8 @@ class RandomBot():
             if self.training == True:
                 # 試合終了した場合
                 if self.my_color == 'r':
-                    #if abs(self.reward) == 1 or self.timer > turnEnd:
-                    if abs(self.reward) == 1 or self.time > TimeLimit:
+                    print('me', self.score[0], 'enemy', self.score[1], 'reward', self.reward)
+                    if abs(self.reward) == 1:
                         if   self.reward == 0 : print('Draw')
                         elif self.reward == 1 : print('Win!')
                         else                  : print('Lose')
