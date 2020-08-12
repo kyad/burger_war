@@ -543,7 +543,7 @@ class RandomBot():
                         else                  : print('Lose')
                         with open('result.csv', 'a') as f:
                             writer = csv.writer(f, lineterminator='\n')
-                            writer.writerow([self.score[0], self.score[1]])
+                            writer.writerow([self.score[0], self.score[1], time.time()])
                         self.mainQN.model.save_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')            # モデルの保存
                         self.restart()                                          # 試合再開
                         r.sleep()
