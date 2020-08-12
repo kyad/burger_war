@@ -54,8 +54,8 @@ class QNetwork:
     def __init__(self, learning_rate=0.01):
         self.debug_log = True
 
-        self.model = create_unet()
-        #self.model = resnet()
+        #self.model = create_unet()
+        self.model = resnet()
 
         #self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
         #self.optimizer = Adam()
