@@ -221,7 +221,7 @@ class RandomBot():
         self.sta_pub  = rospy.Publisher("/gazebo/model_states", ModelStates, latch=True) # 初期化用
         self.timer    = 0                                               # 対戦時間
         self.time     = 0.0                                             # 対戦時間(審判から取得)
-        self.reward   = 0.0                                             # 報酬
+        self.reward   = 0                                               # 報酬
         self.my_pos   = np.zeros([16, 16])     # My Location
         self.en_pos   = np.zeros([16, 16])     # En Location
         self.my_color = color                                           # 自分の色情報
@@ -338,19 +338,18 @@ class RandomBot():
 
     # 報酬の計算
     def calc_reward(self):
-        
-        reward = 0.0
-                
-        # 試合終了(Time out)
+        reward = 0
         #if self.timer > turnEnd:
         if self.time > TimeLimit:
-            if self.score[0] >  self.score[1] : reward =  1
-            if self.score[0] <= self.score[1] : reward = -1
-        
-        # 試合終了(Called game)
-        if self.score[0] - self.score[1] >= 10 : reward =  1  # Win
-        if self.score[1] - self.score[0] >= 10 : reward = -1  # Loose
-        
+            # 試合終了(Time out)
+            if self.score[0] > self.score[1]:
+                reward =  1
+            else:
+                reward = -1
+        else:
+            # 試合終了(Called game)
+            if self.score[0] - self.score[1] >= 10 : reward =  1  # Win
+            if self.score[1] - self.score[0] >= 10 : reward = -1  # Lose
         return reward
 
 
@@ -440,7 +439,7 @@ class RandomBot():
         self.score  = np.zeros(20)
         self.timer  = 0
         self.time   = 0.0
-        self.reward = 0.0
+        self.reward = 0
         self.my_pos   = np.zeros([16, 16])     # My Location
         self.en_pos   = np.zeros([16, 16])     # En Location
         subprocess.call('bash ../catkin_ws/src/burger_war/burger_war/scripts/reset_state.sh', shell=True)
@@ -503,8 +502,13 @@ class RandomBot():
             self.actor    = DQN.Actor()
         
             # 重みの読み込み
-            if self.sim_flag == True : self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
-            else                     : self.mainQN.model.load_weights('../wss/Yoshihama0901_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
+            if self.sim_flag == True :
+                try:
+                    self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
+                except:
+                    print('No weight file found. Train from scratch')
+            else                     :
+                self.mainQN.model.load_weights('../wss/Yoshihama0901_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
             self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
 
@@ -532,8 +536,8 @@ class RandomBot():
             if self.training == True:
                 # 試合終了した場合
                 if self.my_color == 'r':
-                    #if abs(self.reward) == 1 or self.timer > turnEnd:
-                    if abs(self.reward) == 1 or self.time > TimeLimit:
+                    print('me', self.score[0], 'enemy', self.score[1], 'reward', self.reward)
+                    if abs(self.reward) == 1:
                         if   self.reward == 0 : print('Draw')
                         elif self.reward == 1 : print('Win!')
                         else                  : print('Lose')
