@@ -22,6 +22,7 @@ from geometry_msgs.msg import Twist, Vector3, Quaternion, PoseWithCovarianceStam
 from sensor_msgs.msg import Image
 import actionlib # RESPECT @seigot
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal # RESPECT @seigot
+from nav_msgs.msg import Path
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 import rosparam
@@ -272,6 +273,10 @@ class RandomBot():
         self.action = np.array([0, 0])
         self.action2 = np.array([0, 0])
 
+        # Check if current path is valid or not in callback_global_plan()
+        self.is_valid_plan = False
+        rospy.Subscriber("move_base/DWAPlannerROS/global_plan", Path, self.callback_global_plan, queue_size=2)
+
     # スコア情報の更新(war_stateのコールバック関数)
     def callback_war_state(self, data):
         json_dict = json.loads(data.data)                  # json辞書型に変換
@@ -295,6 +300,10 @@ class RandomBot():
         pos = data.pose.pose.position
         ori = data.pose.pose.orientation
         self.pos[0] = pos.x; self.pos[1] = pos.y; self.pos[2] = ori.x; self.pos[3] = ori.y; self.pos[4] = ori.z; self.pos[5] = ori.w
+
+    # Callback for topic ~/move_base/DWAPlannerROS/global_plan
+    def callback_global_plan(self, path):
+        self.is_valid_plan = True
     
     # 位置情報の更新(model_stateのコールバック関数)
     def callback_model_state(self, data):
@@ -353,26 +362,47 @@ class RandomBot():
         self.timer += 1
 
         # 行動を決定する
-        if self.timer > 2:
-            #tmp = np.transpose(self.state, (0, 3, 1, 2))
-            #for i in range(0, 7) : print(i, tmp[0][i])
-            action = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag)
-        else:
-            if self.timer == 1 : action = np.array([ 6,  9])
-            if self.timer == 2 : action = np.array([10, 10])
-            self.action2 = self.action
-            self.action = action
-        
-        # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
-        desti   = get_destination(action)
-        yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
-        #print('****Action****', self.timer, action, desti, yaw*360/np.pi)
-        print(self.my_color, '* Action * Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
-        print('')
-        
-        # Actionに従った行動  目的地の設定 (X, Y, Yaw)
-        self.setGoal(desti[0], desti[1], yaw)
-        #self.restart()  # ******* 強制Restart用 *******
+        # Iterate until valid plan is confirmed in case of random action (No iteration for predicted action)
+        force_random_action = False   # Flag to force random action for 2nd and more trials. False for 1st trial.
+        while True:
+            predicted = False
+            if self.timer > 2:
+                #tmp = np.transpose(self.state, (0, 3, 1, 2))
+                #for i in range(0, 7) : print(i, tmp[0][i])
+    
+                # Get action (predicted = True if predicted, otherwise random selection)
+                action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag, force_random_action)
+            else:
+                if self.timer == 1 : action = np.array([ 6,  9])
+                if self.timer == 2 : action = np.array([10, 10])
+                self.action2 = self.action
+                self.action = action
+            
+            # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
+            desti   = get_destination(action)
+            yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
+            #print('****Action****', self.timer, action, desti, yaw*360/np.pi)
+            print(self.my_color, '* Action * Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
+            print('')
+            
+            # Actionに従った行動  目的地の設定 (X, Y, Yaw)
+            is_valid_goal = self.setGoal(desti[0], desti[1], yaw)  # Returns True if valid goal is set
+
+            # Print messages about goal
+            if is_valid_goal:
+                rospy.loginfo('Valid goal is set by %s.' % ('prediction' if predicted else 'random selection'))
+            else:
+                rospy.logerr('Invalid goal is set by %s. Retrying...' % ('prediction' if predicted else 'random selection'))
+
+            # Judge whether to break the iteration or not
+            if is_valid_goal or predicted:
+                # Successfully goal is set. Break the iteration.
+                break
+
+            # Here random goal is invalid. Try again while forcing random action
+            force_random_action = True
+
+            #self.restart()  # ******* 強制Restart用 *******
         
         # Action後の状態と報酬を取得
         next_state = self.getState()                                            # Action後の状態
@@ -420,6 +450,7 @@ class RandomBot():
     # RESPECT @seigot
     # do following command first.
     #   $ roslaunch burger_navigation multi_robot_navigation_run.launch
+    # returns True if suceeded, otherwise failed (need to be set goal again)
     def setGoal(self,x,y,yaw):
         self.client.wait_for_server()
         #print('setGoal x=', x, 'y=', y, 'yaw=', yaw)
@@ -442,11 +473,22 @@ class RandomBot():
 
         # Stateの戻り値詳細：PENDING, ACTIVE, RECALLED, REJECTED, PREEMPTED, ABORTED, SUCCEEDED, LOST
         #  https://docs.ros.org/diamondback/api/actionlib/html/classactionlib_1_1SimpleClientGoalState.html#a91066f14351d31404a2179da02c518a0a2f87385336ac64df093b7ea61c76fafe
-        #state = self.client.send_goal_and_wait(goal, execute_timeout=rospy.Duration(5))
-        state = self.client.send_goal_and_wait(goal, execute_timeout=rospy.Duration(4))
-        #print(self.my_color, "state=", state)
+        self.client.send_goal(goal)
 
-        return 0
+        # Wait 1 second to check path planner topic subscription. Need to be set flag false before wait
+        self.is_valid_plan = False
+        self.client.wait_for_result(rospy.Duration(1))
+        if not self.is_valid_plan:
+            # No new amcl_pose message received, which means planned path is invalid.
+            self.client.cancel_goal()
+            return False  # Failed
+
+        # Continue waiting
+        if not self.client.wait_for_result(rospy.Duration(3)):
+            self.client.cancel_goal()
+        #print(self.my_color, "state=", self.client.get_state())  # 2: on the way to goal, 3: reached goal
+
+        return True  # Succeeded
 
 
     # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/

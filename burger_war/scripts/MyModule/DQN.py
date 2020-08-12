@@ -149,7 +149,7 @@ class Actor:
 
         # 移動禁止箇所
         #ban = np.array( [ [4,8], [7,8], [7,7], [8,12], [8,9], [8,8], [8,7], [8,4], [9,9], [9,8], [12,8]  ] )
-        ban = np.array( [ [99,99] ] )
+        ban = np.array( [ [99,99], [7,7], [8,8] ] )  # [7,7] and [8,8] are reserved.
 
         flag = True
         while flag:
@@ -166,7 +166,7 @@ class Actor:
         result = np.array([ result[0][0], result[1][0] ])
         return result
 
-    def get_action(self, state, episode, mainQN, bot_color, action_bf, action_bf2, delta_score, sim_flag):   # [C]ｔ＋１での行動を返す
+    def get_action(self, state, episode, mainQN, bot_color, action_bf, action_bf2, delta_score, sim_flag, force_random_action):   # [C]ｔ＋１での行動を返す
 
         # 徐々に最適行動のみをとる、ε-greedy法
         #epsilon = 0.001 + 0.9 / (1.0+episode)
@@ -176,8 +176,10 @@ class Actor:
         # 移動禁止箇所
         #ban = np.array( [ [4,8], [7,8], [7,7], [8,12], [8,9], [8,8], [8,7], [8,4], [9,9], [9,8], [12,8]  ] )
 
-        if epsilon <= np.random.uniform(0, 1):
+        predicted = False  # True if predicted by network, otherwise random selection
+        if epsilon <= np.random.uniform(0, 1) and not force_random_action:
             #if bot_color == 'r' : print('Learned')
+            predicted = True
 
             retTargetQs = mainQN.model.predict(state)             # (1, 16, 16, 1)
             #if bot_color == 'r' : print_state_At(retTargetQs, 0)  # 予測結果を表示
@@ -210,4 +212,4 @@ class Actor:
             # 移動禁止箇所以外へランダムに行動する
             action = self.generateRandomDestination()
 
-        return action
+        return action, predicted
