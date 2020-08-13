@@ -417,7 +417,7 @@ class RandomBot():
             print('')
             
             # Actionに従った行動  目的地の設定 (X, Y, Yaw)
-            is_valid_goal = self.setGoal(desti[0], desti[1], yaw)  # Returns True if valid goal is set
+            is_valid_goal = self.setGoal(desti[0], desti[1], yaw, predicted)  # Returns True if valid goal is set
             is_valid_goal = True
 
             # Print messages about goal
@@ -483,7 +483,7 @@ class RandomBot():
     # do following command first.
     #   $ roslaunch burger_navigation multi_robot_navigation_run.launch
     # returns True if suceeded, otherwise failed (need to be set goal again)
-    def setGoal(self,x,y,yaw):
+    def setGoal(self,x,y,yaw,force_wait):
         self.client.wait_for_server()
         #print('setGoal x=', x, 'y=', y, 'yaw=', yaw)
 
@@ -510,7 +510,7 @@ class RandomBot():
         # Wait 1 second to check path planner topic subscription. Need to be set flag false before wait
         self.is_valid_plan = False
         self.client.wait_for_result(rospy.Duration(1))
-        if not self.is_valid_plan:
+        if not self.is_valid_plan and not force_wait:
             # No new amcl_pose message received, which means planned path is invalid.
             self.client.cancel_goal()
             return False  # Failed
