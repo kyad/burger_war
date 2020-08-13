@@ -41,6 +41,7 @@ fieldScale = 2.4  # 競技場の広さ
 TimeLimit = 180
 #TimeLimit = 30
 maxGoalItrCount = 10  # Max number of iteration to determine goal. (STAY will be chosen if exceeded)
+maxSameGoalCount = 3  # Max number to approve same goal with previous one.
 
 # クォータニオンからオイラー角への変換
 def quaternion_to_euler(quaternion):
@@ -273,6 +274,7 @@ class RandomBot():
         
         self.action = np.array([0, 0])
         self.action2 = np.array([0, 0])
+        self.same_action_count = 0
 
         # Check if current path is valid or not in callback_global_plan()
         self.is_valid_plan = False
@@ -390,6 +392,9 @@ class RandomBot():
         
         # Iterate until valid plan is confirmed in case of random action (No iteration for predicted action)
         force_random_action = False   # Flag to force random action for 2nd and more trials. False for 1st trial.
+        avoid_best_action = (self.same_action_count >= maxSameGoalCount)
+        if avoid_best_action:
+            rospy.logwarn('Avoid choosing best action, choose 2nd to 5th best instead.');
         for goal_itr_cnt in range(maxGoalItrCount):
             predicted = False
             if self.timer > 6:
@@ -400,7 +405,7 @@ class RandomBot():
                 if not self.flag_ThreadEnd :
                     self.thread.join()
                     self.flag_ThreadEnd = True
-                action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag, force_random_action)
+                action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag, force_random_action, avoid_best_action)
                 # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
                 desti   = get_destination(action)
                 yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
@@ -446,6 +451,14 @@ class RandomBot():
         
         self.action2 = self.action
         self.action = action
+        
+        # Count up if sequentially same action is chosen
+        if (self.action == self.action2).all():
+            self.same_action_count += 1
+            rospy.logwarn('Same goal is set for %d times (approved max %d times)' % (self.same_action_count, maxSameGoalCount))
+        else:
+            self.same_action_count = 0
+
         if self.timer > 6:
             # メモリの更新する
             self.memory.add((self.state, action, reward, next_state))               # メモリの更新する
