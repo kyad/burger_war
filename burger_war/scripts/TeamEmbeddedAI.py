@@ -391,7 +391,7 @@ class RandomBot():
         force_random_action = False   # Flag to force random action for 2nd and more trials. False for 1st trial.
         while True:
             predicted = False
-            if self.timer > 2:
+            if self.timer > 6:
                 #tmp = np.transpose(self.state, (0, 3, 1, 2))
                 #for i in range(0, 7) : print(i, tmp[0][i])
     
@@ -400,21 +400,25 @@ class RandomBot():
                     self.thread.join()
                     self.flag_ThreadEnd = True
                 action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag, force_random_action)
+                # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
+                desti   = get_destination(action)
+                yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
             else:
-                if self.timer == 1 : action = np.array([ 6,  9])
-                if self.timer == 2 : action = np.array([10, 10])
-                #self.action2 = self.action
-                #self.action = action
+                action = np.array([ 0,  0])
+                if self.timer <= 2 :
+                    desti = np.array([ -0.60,  0.00])
+                    yaw  = 0
+                elif self.timer <= 6 :
+                    desti = np.array([  0.00,  0.55])
+                    yaw  = 180
             
-            # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
-            desti   = get_destination(action)
-            yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
             #print('****Action****', self.timer, action, desti, yaw*360/np.pi)
             print(self.my_color, '* Action * Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
             print('')
             
             # Actionに従った行動  目的地の設定 (X, Y, Yaw)
             is_valid_goal = self.setGoal(desti[0], desti[1], yaw)  # Returns True if valid goal is set
+            is_valid_goal = True
 
             # Print messages about goal
             if is_valid_goal:
@@ -439,7 +443,7 @@ class RandomBot():
         
         self.action2 = self.action
         self.action = action
-        if self.timer > 2:
+        if self.timer > 6:
             # メモリの更新する
             self.memory.add((self.state, action, reward, next_state))               # メモリの更新する
             self.state  = next_state                                                # 状態更新
