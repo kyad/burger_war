@@ -40,6 +40,7 @@ fieldScale = 2.4  # 競技場の広さ
 #turnEnd    = 10   # 何ターンで１試合を終了させるか
 TimeLimit = 180
 #TimeLimit = 30
+maxGoalItrCount = 10  # Max number of iteration to determine goal. (STAY will be chosen if exceeded)
 
 # クォータニオンからオイラー角への変換
 def quaternion_to_euler(quaternion):
@@ -389,7 +390,7 @@ class RandomBot():
         
         # Iterate until valid plan is confirmed in case of random action (No iteration for predicted action)
         force_random_action = False   # Flag to force random action for 2nd and more trials. False for 1st trial.
-        while True:
+        for goal_itr_cnt in range(maxGoalItrCount):
             predicted = False
             if self.timer > 6:
                 #tmp = np.transpose(self.state, (0, 3, 1, 2))
@@ -418,21 +419,23 @@ class RandomBot():
             
             # Actionに従った行動  目的地の設定 (X, Y, Yaw)
             is_valid_goal = self.setGoal(desti[0], desti[1], yaw, predicted)  # Returns True if valid goal is set
-            is_valid_goal = True
 
             # Print messages about goal
             if is_valid_goal:
-                rospy.loginfo('Valid goal is set by %s.' % ('prediction' if predicted else 'random selection'))
+                rospy.loginfo('[%d/%d] Valid goal is set by %s.' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
             else:
-                rospy.logerr('Invalid goal is set by %s. Retrying...' % ('prediction' if predicted else 'random selection'))
+                rospy.logerr('[%d/%d] Invalid goal is set by %s. Retrying...' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
 
-            # Judge whether to break the iteration or not
+            # Judge whether to break the iteration or not. Break in case that:
+            # 1) goal is predicted by DQN,
+            # 2) random goal is valid.
             if is_valid_goal or predicted:
                 # Successfully goal is set. Break the iteration.
                 break
 
-            # Here random goal is invalid. Try again while forcing random action
-            force_random_action = True
+            # Here goal is random and invalid. Need to try again. Note that random action is forced next time.
+            if not predicted:
+                force_random_action = True
 
             #self.restart()  # ******* 強制Restart用 *******
         
