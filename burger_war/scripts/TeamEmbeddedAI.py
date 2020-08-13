@@ -42,6 +42,7 @@ TimeLimit = 180
 #TimeLimit = 30
 maxGoalItrCount = 10  # Max number of iteration to determine goal. (STAY will be chosen if exceeded)
 maxSameGoalCount = 3  # Max number to approve same goal with previous one.
+marginFromObstacle = 0.6  # Margin to be kept from obstacle surface (unit: cell. Field width 2.4 meters is equal to 16 cells)
 
 # クォータニオンからオイラー角への変換
 def quaternion_to_euler(quaternion):
@@ -76,7 +77,54 @@ def get_pos_matrix(x, y, n=16):
 
 # 移動先の座標
 def get_destination(action, n=16):
+    # Create table for remapping the specified unreachable action to new reachable one.
+    # Note that only one side is defined (x < y) as world is symmetric.
+    dest_table = [
+        # [ [from_x_int, from_y_int], [to_x_flt, to_y_flt] ], ...
+
+        # CornerBox1
+        [ [2,7], [2.0 - marginFromObstacle, 7.0 - marginFromObstacle] ],
+        [ [2,8], [2.0 - marginFromObstacle, 8.0 + marginFromObstacle] ],
+        [ [3,7], [3.0 + marginFromObstacle, 7.0 - marginFromObstacle] ],
+        [ [3,8], [3.0 + marginFromObstacle, 8.0 + marginFromObstacle] ],
+
+        # CornerBox2
+        [ [7,12], [7.0 - marginFromObstacle, 12.0 - marginFromObstacle] ],
+        [ [7,13], [7.0 - marginFromObstacle, 13.0 + marginFromObstacle] ],
+        [ [8,12], [8.0 + marginFromObstacle, 12.0 - marginFromObstacle] ],
+        [ [8,13], [8.0 + marginFromObstacle, 13.0 + marginFromObstacle] ],
+
+        # Surface of CenterBox
+        [ [6,7], [6.0 - marginFromObstacle, 7.0 - marginFromObstacle] ],
+        [ [6,8], [6.0 - marginFromObstacle, 8.0 + marginFromObstacle] ],
+        [ [7,9], [7.0 - marginFromObstacle, 9.0 + marginFromObstacle] ],
+        [ [8,9], [8.0 + marginFromObstacle, 9.0 + marginFromObstacle] ],
+
+        # Inside CenterBox. Need extra margin.
+        [ [7,7], [7.0 - marginFromObstacle - 0.5, 7.0 - marginFromObstacle - 0.5] ],  # This cell is dedicated for loss function and not available. But implemented just in case.
+        [ [7,8], [7.0 - marginFromObstacle - 0.5, 8.0 + marginFromObstacle + 0.5] ],
+        [ [8,8], [8.0 - marginFromObstacle + 0.5, 8.0 - marginFromObstacle + 0.5] ],  # This cell is dedicated for loss function and not available. But implemented just in case.
+    ]
+    # Wall1
+    dest_table.extend([
+        [[0, i], [marginFromObstacle, float(i)]] for i in range(16)
+        ])
+    # Wall2
+    dest_table.extend([
+        [[i, 15], [float(i), 15.0 - marginFromObstacle]] for i in range(16)
+        ])
+
+    # Remap unreachable action
     action_f = np.array(action, dtype='float32')
+    for row in dest_table:
+        for i in range(2):
+            if row[0][i] == action[0] and row[0][1 - i] == action[1]:
+                action_f[0] = row[1][i]
+                action_f[1] = row[1][1 - i]
+                rospy.logwarn('Unreachable action is remapped: (%d, %d) -> (%.2f, %.2f)' % (action[0], action[1], action_f[0], action_f[1]))
+            if row[0][0] == row[0][1]:
+                break
+
     pos   = action_f/n + 1.0/(2*n)
     pos   = (pos-1.0/2)*fieldScale
     rot   = get_rotation_matrix(45 * np.pi / 180)             # 45度回転行列の定義
