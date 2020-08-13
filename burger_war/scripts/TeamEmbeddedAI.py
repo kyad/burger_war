@@ -131,26 +131,6 @@ def get_sco_matrix(score, point):
     if score[19] == point : fill_score(np_sco,  4,  8)   # 19:FriedShrimp_S
     return np_sco
 
-'''
-# 得点ベクトルを返す
-def get_sco_matrix(score, point):
-    #point = 1
-    np_sco = np.zeros([16, 16])
-    if score[8]  == point : np_sco[12,  7] = 1   #  8:Tomato_N
-    if score[9]  == point : np_sco[11,  8] = 1   #  9:Tomato_S
-    if score[10] == point : np_sco[ 8,  3] = 1   # 10:Omelette_N
-    if score[11] == point : np_sco[ 7,  4] = 1   # 11:Omelette_S
-    if score[12] == point : np_sco[ 8, 11] = 1   # 12:Pudding_N
-    if score[13] == point : np_sco[ 7, 12] = 1   # 13:Pudding_S
-    if score[14] == point : np_sco[ 3,  8] = 1   # 14:OctopusWiener_N
-    if score[15] == point : np_sco[ 4,  7] = 1   # 15:OctopusWiener_S
-    if score[16] == point : np_sco[ 8,  7] = 1   # 16:FriedShrimp_N
-    if score[17] == point : np_sco[ 8,  8] = 1   # 17:FriedShrimp_E
-    if score[18] == point : np_sco[ 7,  7] = 1   # 18:FriedShrimp_W
-    if score[19] == point : np_sco[ 7,  8] = 1   # 19:FriedShrimp_S
-    return np_sco
-'''
-
 # 自分の側面と背面の得点
 def get_side_matrix(side1, side2, back):
     np_sco = np.zeros([16, 16])
@@ -363,33 +343,6 @@ class RandomBot():
         
         self.timer += 1
 
-        # 行動を決定する
-        '''
-        if self.timer > 2:
-            #tmp = np.transpose(self.state, (0, 3, 1, 2))
-            #for i in range(0, 7) : print(i, tmp[0][i])
-            if not self.flag_ThreadEnd :
-                self.thread.join()
-                self.flag_ThreadEnd = True
-            action = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag)
-        else:
-            if self.timer == 1 : action = np.array([ 6,  9])
-            if self.timer == 2 : action = np.array([10, 10])
-            self.action2 = self.action
-            self.action = action
-        
-        # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
-        desti   = get_destination(action)
-        yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
-        #print('****Action****', self.timer, action, desti, yaw*360/np.pi)
-        print(self.my_color, '* Action * Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
-        print('')
-        
-        # Actionに従った行動  目的地の設定 (X, Y, Yaw)
-        self.setGoal(desti[0], desti[1], yaw)
-        #self.restart()  # ******* 強制Restart用 *******
-        '''
-        
         # Iterate until valid plan is confirmed in case of random action (No iteration for predicted action)
         force_random_action = False   # Flag to force random action for 2nd and more trials. False for 1st trial.
         avoid_best_action = (self.same_action_count >= maxSameGoalCount)
