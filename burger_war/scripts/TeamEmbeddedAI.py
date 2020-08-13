@@ -361,6 +361,7 @@ class RandomBot():
         self.timer += 1
 
         # 行動を決定する
+        '''
         if self.timer > 2:
             #tmp = np.transpose(self.state, (0, 3, 1, 2))
             #for i in range(0, 7) : print(i, tmp[0][i])
@@ -384,6 +385,8 @@ class RandomBot():
         # Actionに従った行動  目的地の設定 (X, Y, Yaw)
         self.setGoal(desti[0], desti[1], yaw)
         #self.restart()  # ******* 強制Restart用 *******
+        '''
+        
         # Iterate until valid plan is confirmed in case of random action (No iteration for predicted action)
         force_random_action = False   # Flag to force random action for 2nd and more trials. False for 1st trial.
         while True:
@@ -393,6 +396,9 @@ class RandomBot():
                 #for i in range(0, 7) : print(i, tmp[0][i])
     
                 # Get action (predicted = True if predicted, otherwise random selection)
+                if not self.flag_ThreadEnd :
+                    self.thread.join()
+                    self.flag_ThreadEnd = True
                 action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag, force_random_action)
             else:
                 if self.timer == 1 : action = np.array([ 6,  9])
