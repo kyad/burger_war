@@ -428,9 +428,9 @@ class RandomBot():
 
             # Print messages about goal
             if is_valid_goal:
-                rospy.loginfo('[%d/%d] Valid goal is set by %s.' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
+                rospy.loginfo('[%d/%d] Navigation is done for valid goal set by %s.' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
             else:
-                rospy.logerr('[%d/%d] Invalid goal is set by %s. Retrying...' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
+                rospy.logerr('[%d/%d] Navigation was cancelled due to invalid goal set by %s. Retrying...' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
 
             # Judge whether to break the iteration or not. Break in case that:
             # 1) goal is predicted by DQN,
