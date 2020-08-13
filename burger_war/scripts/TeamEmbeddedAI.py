@@ -516,7 +516,7 @@ class RandomBot():
             return False  # Failed
 
         # Continue waiting
-        if not self.client.wait_for_result(rospy.Duration(3)):
+        if not self.client.wait_for_result(rospy.Duration(1)):
             self.client.cancel_goal()
         #print(self.my_color, "state=", self.client.get_state())  # 2: on the way to goal, 3: reached goal
 
@@ -555,7 +555,7 @@ class RandomBot():
         
         # Qネットワークとメモリ、Actorの生成--------------------------------------------------------
         learning_rate = 0.0005          # Q-networkの学習係数
-        memory_size   = 400             # バッファーメモリの大きさ
+        memory_size   = 1000             # バッファーメモリの大きさ
         #self.Read_DNN_Model(learning_rate, memory_size)
         self.flag_ThreadEnd = False
         self.thread = threading.Thread(target=self.Read_DNN_Model, args=([learning_rate, memory_size]), name='Read_DNN_Model_Thread')
