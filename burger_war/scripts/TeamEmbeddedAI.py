@@ -403,8 +403,8 @@ class RandomBot():
             else:
                 if self.timer == 1 : action = np.array([ 6,  9])
                 if self.timer == 2 : action = np.array([10, 10])
-                self.action2 = self.action
-                self.action = action
+                #self.action2 = self.action
+                #self.action = action
             
             # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
             desti   = get_destination(action)
@@ -437,12 +437,12 @@ class RandomBot():
         reward     = self.calc_reward()                                         # Actionの結果の報酬
         if abs(reward) == 1 : next_state = np.zeros([1, 16, 16, 7])             # 試合終了時は次の状態はない
         
+        self.action2 = self.action
+        self.action = action
         if self.timer > 2:
             # メモリの更新する
             self.memory.add((self.state, action, reward, next_state))               # メモリの更新する
             self.state  = next_state                                                # 状態更新
-            self.action2 = self.action
-            self.action = action
         
             # Qネットワークの重みを学習・更新する replay
             if self.training == True : learn = 1
