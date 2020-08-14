@@ -485,9 +485,8 @@ class RandomBot():
                 self.mainQN.replay(self.memory, batch_size, gamma, self.targetQN, self.my_color)
         self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
-    # シュミレーション再開
-    def restart(self):
-        self.vel_pub.publish(Twist()) # 動きを止める
+    # 試合終了して次の試合を始める際に内部状態をリセット
+    def reset(self):
         self.memory.reset()
         self.score  = np.zeros(20)
         self.timer  = 0
@@ -495,6 +494,10 @@ class RandomBot():
         self.reward = 0
         self.my_pos   = np.zeros([16, 16])     # My Location
         self.en_pos   = np.zeros([16, 16])     # En Location
+
+    # シュミレーション再開
+    def restart(self):
+        self.vel_pub.publish(Twist()) # 動きを止める
         subprocess.call('bash ../catkin_ws/src/burger_war/burger_war/scripts/reset_state.sh', shell=True)
         #r.sleep()
 
@@ -609,12 +612,12 @@ class RandomBot():
                                 rospy.logwarn('%s: save_weights error. Retry' % self.my_color)
                                 time.sleep(1)
                         # 試合再開
+                        self.reset()
                         self.restart()
                         r.sleep()
                 else:
                     #if self.timer % turnEnd == 0 :
                     if self.time < 10 :
-                        self.memory.reset()
                         # 重みの読み込み
                         while True:
                             try:
@@ -623,6 +626,8 @@ class RandomBot():
                             except:
                                 rospy.logwarn('%s: load_weights error. Retry' % self.my_color)
                                 time.sleep(1)
+                        # 試合再開
+                        self.reset()
             
             r.sleep()
         
