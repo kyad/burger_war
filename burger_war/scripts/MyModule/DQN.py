@@ -205,7 +205,7 @@ class Actor:
         result = np.array([ result[0][0], result[1][0] ])
         return result
 
-    def get_action(self, state, episode, mainQN, bot_color, action_bf, action_bf2, delta_score, sim_flag, force_random_action):   # [C]ｔ＋１での行動を返す
+    def get_action(self, state, episode, mainQN, bot_color, action_bf, action_bf2, delta_score, sim_flag, force_random_action, avoid_best_action):   # [C]ｔ＋１での行動を返す
 
         # 徐々に最適行動のみをとる、ε-greedy法
         #epsilon = 0.001 + 0.9 / (1.0+episode)
@@ -229,7 +229,10 @@ class Actor:
             action      = np.array(action)
 
             # 学習結果前フィールドと同じで現状負けていたら２～５番目の候補のどれかに変更する
-            if ((action[0] == action_bf[0] and action[1] == action_bf[1]) or (action[0] == action_bf2[0] and action[1] == action_bf2[1])) and delta_score <= 0 :
+            same_and_behind = (((action[0] == action_bf[0] and action[1] == action_bf[1]) or (action[0] == action_bf2[0] and action[1] == action_bf2[1])) and delta_score <= 0)
+
+            # Choose action from 2nd to 5th best candidates
+            if same_and_behind or avoid_best_action:
                 if bot_color == 'r' : print('Select Except Top Action')
                 action = self.getIndexAtMaxN(retTargetQs, 2+int(np.random.rand()*9))
                 #action = self.generateRandomDestination()

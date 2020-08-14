@@ -40,6 +40,9 @@ fieldScale = 2.4  # 競技場の広さ
 #turnEnd    = 10   # 何ターンで１試合を終了させるか
 TimeLimit = 180
 #TimeLimit = 30
+maxGoalItrCount = 10  # Max number of iteration to determine goal. (STAY will be chosen if exceeded)
+maxSameGoalCount = 3  # Max number to approve same goal with previous one.
+marginFromObstacle = 0.6  # Margin to be kept from obstacle surface (unit: cell. Field width 2.4 meters is equal to 16 cells)
 
 # クォータニオンからオイラー角への変換
 def quaternion_to_euler(quaternion):
@@ -74,7 +77,54 @@ def get_pos_matrix(x, y, n=16):
 
 # 移動先の座標
 def get_destination(action, n=16):
+    # Create table for remapping the specified unreachable action to new reachable one.
+    # Note that only one side is defined (x < y) as world is symmetric.
+    dest_table = [
+        # [ [from_x_int, from_y_int], [to_x_flt, to_y_flt] ], ...
+
+        # CornerBox1
+        [ [2,7], [2.0 - marginFromObstacle, 7.0 - marginFromObstacle] ],
+        [ [2,8], [2.0 - marginFromObstacle, 8.0 + marginFromObstacle] ],
+        [ [3,7], [3.0 + marginFromObstacle, 7.0 - marginFromObstacle] ],
+        [ [3,8], [3.0 + marginFromObstacle, 8.0 + marginFromObstacle] ],
+
+        # CornerBox2
+        [ [7,12], [7.0 - marginFromObstacle, 12.0 - marginFromObstacle] ],
+        [ [7,13], [7.0 - marginFromObstacle, 13.0 + marginFromObstacle] ],
+        [ [8,12], [8.0 + marginFromObstacle, 12.0 - marginFromObstacle] ],
+        [ [8,13], [8.0 + marginFromObstacle, 13.0 + marginFromObstacle] ],
+
+        # Surface of CenterBox
+        [ [6,7], [6.0 - marginFromObstacle, 7.0 - marginFromObstacle] ],
+        [ [6,8], [6.0 - marginFromObstacle, 8.0 + marginFromObstacle] ],
+        [ [7,9], [7.0 - marginFromObstacle, 9.0 + marginFromObstacle] ],
+        [ [8,9], [8.0 + marginFromObstacle, 9.0 + marginFromObstacle] ],
+
+        # Inside CenterBox. Need extra margin.
+        [ [7,7], [7.0 - marginFromObstacle - 0.5, 7.0 - marginFromObstacle - 0.5] ],  # This cell is dedicated for loss function and not available. But implemented just in case.
+        [ [7,8], [7.0 - marginFromObstacle - 0.5, 8.0 + marginFromObstacle + 0.5] ],
+        [ [8,8], [8.0 - marginFromObstacle + 0.5, 8.0 - marginFromObstacle + 0.5] ],  # This cell is dedicated for loss function and not available. But implemented just in case.
+    ]
+    # Wall1
+    dest_table.extend([
+        [[0, i], [marginFromObstacle, float(i)]] for i in range(16)
+        ])
+    # Wall2
+    dest_table.extend([
+        [[i, 15], [float(i), 15.0 - marginFromObstacle]] for i in range(16)
+        ])
+
+    # Remap unreachable action
     action_f = np.array(action, dtype='float32')
+    for row in dest_table:
+        for i in range(2):
+            if row[0][i] == action[0] and row[0][1 - i] == action[1]:
+                action_f[0] = row[1][i]
+                action_f[1] = row[1][1 - i]
+                rospy.logwarn('Unreachable action is remapped: (%d, %d) -> (%.2f, %.2f)' % (action[0], action[1], action_f[0], action_f[1]))
+            if row[0][0] == row[0][1]:
+                break
+
     pos   = action_f/n + 1.0/(2*n)
     pos   = (pos-1.0/2)*fieldScale
     rot   = get_rotation_matrix(45 * np.pi / 180)             # 45度回転行列の定義
@@ -128,26 +178,6 @@ def get_sco_matrix(score, point):
     if score[18] == point : fill_score(np_sco,  4,  4)   # 18:FriedShrimp_W
     if score[19] == point : fill_score(np_sco,  4,  8)   # 19:FriedShrimp_S
     return np_sco
-
-'''
-# 得点ベクトルを返す
-def get_sco_matrix(score, point):
-    #point = 1
-    np_sco = np.zeros([16, 16])
-    if score[8]  == point : np_sco[12,  7] = 1   #  8:Tomato_N
-    if score[9]  == point : np_sco[11,  8] = 1   #  9:Tomato_S
-    if score[10] == point : np_sco[ 8,  3] = 1   # 10:Omelette_N
-    if score[11] == point : np_sco[ 7,  4] = 1   # 11:Omelette_S
-    if score[12] == point : np_sco[ 8, 11] = 1   # 12:Pudding_N
-    if score[13] == point : np_sco[ 7, 12] = 1   # 13:Pudding_S
-    if score[14] == point : np_sco[ 3,  8] = 1   # 14:OctopusWiener_N
-    if score[15] == point : np_sco[ 4,  7] = 1   # 15:OctopusWiener_S
-    if score[16] == point : np_sco[ 8,  7] = 1   # 16:FriedShrimp_N
-    if score[17] == point : np_sco[ 8,  8] = 1   # 17:FriedShrimp_E
-    if score[18] == point : np_sco[ 7,  7] = 1   # 18:FriedShrimp_W
-    if score[19] == point : np_sco[ 7,  8] = 1   # 19:FriedShrimp_S
-    return np_sco
-'''
 
 # 自分の側面と背面の得点
 def get_side_matrix(side1, side2, back):
@@ -272,6 +302,7 @@ class RandomBot():
         
         self.action = np.array([0, 0])
         self.action2 = np.array([0, 0])
+        self.same_action_count = 0
 
         # Check if current path is valid or not in callback_global_plan()
         self.is_valid_plan = False
@@ -360,69 +391,57 @@ class RandomBot():
         
         self.timer += 1
 
-        # 行動を決定する
-        if self.timer > 2:
-            #tmp = np.transpose(self.state, (0, 3, 1, 2))
-            #for i in range(0, 7) : print(i, tmp[0][i])
-            if not self.flag_ThreadEnd :
-                self.thread.join()
-                self.flag_ThreadEnd = True
-            action = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag)
-        else:
-            if self.timer == 1 : action = np.array([ 6,  9])
-            if self.timer == 2 : action = np.array([10, 10])
-            self.action2 = self.action
-            self.action = action
-        
-        # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
-        desti   = get_destination(action)
-        yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
-        #print('****Action****', self.timer, action, desti, yaw*360/np.pi)
-        print(self.my_color, '* Action * Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
-        print('')
-        
-        # Actionに従った行動  目的地の設定 (X, Y, Yaw)
-        self.setGoal(desti[0], desti[1], yaw)
-        #self.restart()  # ******* 強制Restart用 *******
         # Iterate until valid plan is confirmed in case of random action (No iteration for predicted action)
         force_random_action = False   # Flag to force random action for 2nd and more trials. False for 1st trial.
-        while True:
+        avoid_best_action = (self.same_action_count >= maxSameGoalCount)
+        if avoid_best_action:
+            rospy.logwarn('Avoid choosing best action, choose 2nd to 5th best instead.');
+        for goal_itr_cnt in range(maxGoalItrCount):
             predicted = False
-            if self.timer > 2:
+            if self.timer > 6:
                 #tmp = np.transpose(self.state, (0, 3, 1, 2))
                 #for i in range(0, 7) : print(i, tmp[0][i])
     
                 # Get action (predicted = True if predicted, otherwise random selection)
-                action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag, force_random_action)
+                if not self.flag_ThreadEnd :
+                    self.thread.join()
+                    self.flag_ThreadEnd = True
+                action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag, force_random_action, avoid_best_action)
+                # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
+                desti   = get_destination(action)
+                yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
             else:
-                if self.timer == 1 : action = np.array([ 6,  9])
-                if self.timer == 2 : action = np.array([10, 10])
-                self.action2 = self.action
-                self.action = action
+                action = np.array([ 0,  0])
+                if self.timer <= 2 :
+                    desti = np.array([ -0.60,  0.00])
+                    yaw  = 0
+                elif self.timer <= 6 :
+                    desti = np.array([  0.00,  0.55])
+                    yaw  = -90
             
-            # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
-            desti   = get_destination(action)
-            yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
             #print('****Action****', self.timer, action, desti, yaw*360/np.pi)
             print(self.my_color, '* Action * Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
             print('')
             
             # Actionに従った行動  目的地の設定 (X, Y, Yaw)
-            is_valid_goal = self.setGoal(desti[0], desti[1], yaw)  # Returns True if valid goal is set
+            is_valid_goal = self.setGoal(desti[0], desti[1], yaw, predicted)  # Returns True if valid goal is set
 
             # Print messages about goal
             if is_valid_goal:
-                rospy.loginfo('Valid goal is set by %s.' % ('prediction' if predicted else 'random selection'))
+                rospy.loginfo('[%d/%d] Navigation is done for valid goal set by %s.' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
             else:
-                rospy.logerr('Invalid goal is set by %s. Retrying...' % ('prediction' if predicted else 'random selection'))
+                rospy.logerr('[%d/%d] Navigation was cancelled due to invalid goal set by %s. Retrying...' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
 
-            # Judge whether to break the iteration or not
+            # Judge whether to break the iteration or not. Break in case that:
+            # 1) goal is predicted by DQN,
+            # 2) random goal is valid.
             if is_valid_goal or predicted:
                 # Successfully goal is set. Break the iteration.
                 break
 
-            # Here random goal is invalid. Try again while forcing random action
-            force_random_action = True
+            # Here goal is random and invalid. Need to try again. Note that random action is forced next time.
+            if not predicted:
+                force_random_action = True
 
             #self.restart()  # ******* 強制Restart用 *******
         
@@ -431,12 +450,20 @@ class RandomBot():
         reward     = self.calc_reward()                                         # Actionの結果の報酬
         if abs(reward) == 1 : next_state = np.zeros([1, 16, 16, 7])             # 試合終了時は次の状態はない
         
-        if self.timer > 2:
+        self.action2 = self.action
+        self.action = action
+        
+        # Count up if sequentially same action is chosen
+        if (self.action == self.action2).all():
+            self.same_action_count += 1
+            rospy.logwarn('Same goal is set for %d times (approved max %d times)' % (self.same_action_count, maxSameGoalCount))
+        else:
+            self.same_action_count = 0
+
+        if self.timer > 6:
             # メモリの更新する
             self.memory.add((self.state, action, reward, next_state))               # メモリの更新する
             self.state  = next_state                                                # 状態更新
-            self.action2 = self.action
-            self.action = action
         
             # Qネットワークの重みを学習・更新する replay
             if self.training == True : learn = 1
@@ -473,7 +500,7 @@ class RandomBot():
     # do following command first.
     #   $ roslaunch burger_navigation multi_robot_navigation_run.launch
     # returns True if suceeded, otherwise failed (need to be set goal again)
-    def setGoal(self,x,y,yaw):
+    def setGoal(self,x,y,yaw,force_wait):
         self.client.wait_for_server()
         #print('setGoal x=', x, 'y=', y, 'yaw=', yaw)
 
@@ -500,13 +527,13 @@ class RandomBot():
         # Wait 1 second to check path planner topic subscription. Need to be set flag false before wait
         self.is_valid_plan = False
         self.client.wait_for_result(rospy.Duration(1))
-        if not self.is_valid_plan:
+        if not self.is_valid_plan and not force_wait:
             # No new amcl_pose message received, which means planned path is invalid.
             self.client.cancel_goal()
             return False  # Failed
 
         # Continue waiting
-        if not self.client.wait_for_result(rospy.Duration(3)):
+        if not self.client.wait_for_result(rospy.Duration(1)):
             self.client.cancel_goal()
         #print(self.my_color, "state=", self.client.get_state())  # 2: on the way to goal, 3: reached goal
 
@@ -545,7 +572,7 @@ class RandomBot():
         
         # Qネットワークとメモリ、Actorの生成--------------------------------------------------------
         learning_rate = 0.0005          # Q-networkの学習係数
-        memory_size   = 400             # バッファーメモリの大きさ
+        memory_size   = 1000             # バッファーメモリの大きさ
         #self.Read_DNN_Model(learning_rate, memory_size)
         self.flag_ThreadEnd = False
         self.thread = threading.Thread(target=self.Read_DNN_Model, args=([learning_rate, memory_size]), name='Read_DNN_Model_Thread')
