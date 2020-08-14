@@ -347,12 +347,12 @@ class RandomBot():
         if 'red_bot' in data.name:
             index_r = data.name.index('red_bot')
         else:
-            print('callback_model_state: red_bot not found')
+            rospy.logerr('callback_model_state: red_bot not found')
             return
         if 'blue_bot' in data.name:
             index_b = data.name.index('blue_bot')
         else:
-            print('callback_model_state: blue_bot not found')
+            rospy.logerr('callback_model_state: blue_bot not found')
             return
         #print('callback_model_state: index_r=', index_r, 'index_b=', index_b)
         my    = index_r if self.my_color == 'r' else index_b
@@ -424,9 +424,7 @@ class RandomBot():
                     desti = np.array([  0.00,  0.55])
                     yaw  = -90
             
-            #print('****Action****', self.timer, action, desti, yaw*360/np.pi)
-            print(self.my_color, '* Action * Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
-            print('')
+            rospy.loginfo('* Action * color=%s Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.my_color, self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
             
             # Actionに従った行動  目的地の設定 (X, Y, Yaw)
             is_valid_goal = self.setGoal(desti[0], desti[1], yaw, predicted)  # Returns True if valid goal is set
@@ -562,7 +560,7 @@ class RandomBot():
                 try:
                     self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
                 except:
-                    print('No weight file found. Train from scratch')
+                    rospy.loginfo('No weight file found. Train from scratch')
             else                     :
                 self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
             self.targetQN.model.set_weights(self.mainQN.model.get_weights())
@@ -593,11 +591,11 @@ class RandomBot():
             if self.training == True:
                 # 試合終了した場合
                 if self.my_color == 'r':
-                    print('me', self.score[0], 'enemy', self.score[1], 'reward', self.reward)
+                    rospy.loginfo('me=%f enemy=%f reward=%d' % (self.score[0], self.score[1], self.reward))
                     if abs(self.reward) == 1:
-                        if   self.reward == 0 : print('Draw')
-                        elif self.reward == 1 : print('Win!')
-                        else                  : print('Lose')
+                        if   self.reward == 0 : rospy.loginfo('Draw')
+                        elif self.reward == 1 : rospy.loginfo('Win!')
+                        else                  : rospy.loginfo('Lose')
                         with open('result.csv', 'a') as f:
                             writer = csv.writer(f, lineterminator='\n')
                             writer.writerow([self.score[0], self.score[1], time.time()])
@@ -624,9 +622,8 @@ class RandomBot():
                                 self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')
                                 break
                             except:
-                                print(self.my_color, 'load_weights error. Retry')
+                                rospy.logwarn('%s: load_weights error. Retry' % self.my_color)
                                 time.sleep(1)
-                        print(self.my_color, 'load_weights OK')
             
             r.sleep()
         
@@ -743,9 +740,9 @@ if __name__ == '__main__':
         rside = rosparam.get_param('enemyRun/rside')
     except:
         rside = 'r'
-    print('**************** rside=', rside)
-    
+
     rospy.init_node('IntegAI_run')    # 初期化宣言 : このソフトウェアは"IntegAI_run"という名前
+    rospy.loginfo('**************** rside=%s' % rside)
     bot = RandomBot('Team Integ AI', color=rside, Sim_flag=Sim_flag)
     
     bot.strategy()
