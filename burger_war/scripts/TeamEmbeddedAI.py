@@ -444,7 +444,7 @@ class RandomBot():
             if self.my_color == 'b'  : learn = 0
             batch_size = 40   # Q-networkを更新するバッチの大きさ
             gamma = 0.97      # 割引係数
-            if (batch_size >= 2 and self.memory.len() > batch_size) and learn:
+            if (batch_size >= 2 and len(self.memory) > batch_size) and learn:
                 #print('call replay timer=', self.timer)
                 self.mainQN.replay(self.memory, batch_size, gamma, self.targetQN, self.my_color)
             self.targetQN.model.set_weights(self.mainQN.model.get_weights())

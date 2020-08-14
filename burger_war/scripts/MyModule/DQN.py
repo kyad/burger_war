@@ -6,12 +6,14 @@
 
 import numpy as np
 
-from collections import deque
+from collections import deque, namedtuple
 import tensorflow as tf
 from keras import backend as K
 from keras.optimizers import Adam, SGD
 
 from network import resnet, create_unet
+
+Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
 
 # ４次元ベクトルの任意ch内容確認
 def print_state_At(state, index):
@@ -61,64 +63,100 @@ class QNetwork:
         #self.optimizer = Adam()
 
         #self.optimizer = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-        self.optimizer = SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True)
+        self.optimizer = tf.optimizers.SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True)
 
-        self.model.compile(loss=huberloss, optimizer=self.optimizer)
+        #self.model.compile(loss=huberloss, optimizer=self.optimizer)
 
         if self.debug_log == True:
             self.model.summary()
 
     # 重みの学習
-    def replay(self, memory, batch_size, gamma, targetQN, bot_color):
-        inputs  = np.zeros((batch_size, 16, 16, 7))
-        targets = np.zeros((batch_size, 16, 16, 1))
-        mini_batch = memory.sample(batch_size)
+    def replay(self, memory, batch_size, gamma, targetQN):
+        #inputs  = np.zeros((batch_size, 16, 16, 7))
+        #targets = np.zeros((batch_size, 16, 16, 1))
 
-        #for i, (state_b, linear_b, angle_b, reward_b, next_state_b) in enumerate(mini_batch):
-        for i, (state_b, action_b, reward_b, next_state_b) in enumerate(mini_batch):
-            inputs[i:i + 1] = state_b
-            target = reward_b
+        if len(memory) < batch_size:    # memoryにbatch_size以上のデータが保存されているか確認
+            print("memory size is smaller than batch size.")
+            return
 
-            if reward_b == 0:
-            #if not np.sum(next_state_b) == 0: # 状態が全部ゼロじゃない場合
-                # 価値計算（DDQNにも対応できるように、行動決定のQネットワークと価値観数のQネットワークは分離）
-                retmainQs = self.model.predict(next_state_b)[0]    # (16, 16, 1)
-                retmainQs = np.reshape(retmainQs, (16, 16))        # (16, 16)
+        mini_batch = memory.sample(batch_size)  # memoryからランダムにデータを取り出す
 
-                # 最大の報酬を返す行動を選択する
-                next_action = np.unravel_index(np.argmax(retmainQs), retmainQs.shape)
-                #if bot_color == 'r' : print_state_At(targetQN.model.predict(next_state_b), 0)
+        # それぞれのデータを結合する
+        state_batch = np.concatenate(mini_batch.state)                          # (batch_size, 16, 16, 7)
+        action_batch = np.concatenate(mini_batch.action).reshape(batch_size, 2)       # (batch_size, 2)
+        reward_batch = np.array(mini_batch.reward).reshape(batch_size, 1)       # (batch_size, 1)
+        next_state_batch = np.concatenate(mini_batch.next_state)  # (batch_size, 16, 16, 7)
 
-                targetQs    = targetQN.model.predict(next_state_b)[0] # (16, 16, 1)
-                targetQs    = np.reshape(targetQs, (16, 16))          # (16, 16, 1)
-                next_reward = targetQs[next_action[0]][next_action[1]]
+        # 教師データの作成
+        pred = targetQN.model.predict(next_state_batch).max(1).max(1)
+        next_state_values = pred.reshape(pred.shape[0])
+        y_target = reward_batch.reshape(batch_size) + gamma * next_state_values
 
-                target = reward_b + gamma * next_reward
+        # actionのindexを作成
+        zero_idx = np.zeros((batch_size, 1)).astype('int32')
+        action_batch_idx = np.concatenate([zero_idx, action_batch, zero_idx], 1)
+        action_batch_idx = tf.convert_to_tensor(action_batch_idx, dtype=tf.int32)
 
-            targets[i] = self.model.predict(state_b)               # Qネットワークの出力
-            #if bot_color == 'r' : print(i, reward_b, action_b[0], action_b[1], target, targets[i][action_b[0]])
+        # GradientTapeでy_predとlossを定義し、学習を実行する
+        with tf.GradientTape() as tape:
+            y_pred = self.model(state_batch)
+            y_pred = tf.gather_nd(y_pred, action_batch_idx)
+            loss = huberloss(y_target, y_pred)
 
-            # 学習する報酬の手調整
-            #ban = np.array( [ [4,8], [7,8], [7,7], [8,12], [8,9], [8,8], [8,7], [8,4], [9,9], [9,8], [12,8]  ] )
-            for k in range(16):
-                for l in range(16):
-                    if abs(targets[i][k][l]) > 0.95          : targets[i][k][l] = targets[i][k][l]*0.8  # 大きすぎる場合は少し調整を行う
-                    #if k < 1 or l < 1 or k > 14 or l > 14 : targets[i][k][l] = 0                        # 領域外の報酬は０固定
-                    #for a in ban:
-                    #    if a[0] == k and a[1] == l        : targets[i][k][l] = 0   # 障害物座標の報酬は０固定
+        variables = variables = self.model.trainable_variables
+        gradients = tape.gradient(loss, variables)
+        self.optimizer.apply_gradients(zip(gradients, variables))
 
-            targets[i][action_b[0]][action_b[1]] = target          # 教師信号
-            np.set_printoptions(precision=1)
-            #if bot_color == 'r' : print(i, reward_b, action_b, target)
+        # for i, (state_b, action_b, reward_b, next_state_b) in enumerate(mini_batch):
+        #     inputs[i:i + 1] = state_b
+        #     target = reward_b
 
-        # shiglayさんよりアドバイスいただき、for文の外へ修正しました
-        self.model.fit(inputs, targets, epochs=1, verbose=0)  # 初回は時間がかかる epochsは訓練データの反復回数、verbose=0は表示なしの設定
-        #self.model.fit(inputs, targets, epochs=1, verbose=1)  # 初回は時間がかかる epochsは訓練データの反復回数、verbose=0は表示なしの設定
+        #     if reward_b == 0:
+        #     #if not np.sum(next_state_b) == 0: # 状態が全部ゼロじゃない場合
+        #         # 価値計算（DDQNにも対応できるように、行動決定のQネットワークと価値観数のQネットワークは分離）
+        #         retmainQs = self.model.predict(next_state_b)[0]    # (16, 16, 1)
+        #         retmainQs = np.reshape(retmainQs, (16, 16))        # (16, 16)
+
+        #         # 最大の報酬を返す行動を選択する
+        #         next_action = np.unravel_index(np.argmax(retmainQs), retmainQs.shape)
+        #         #if bot_color == 'r' : print_state_At(targetQN.model.predict(next_state_b), 0)
+
+        #         targetQs    = targetQN.model.predict(next_state_b)[0] # (16, 16, 1)
+        #         targetQs    = np.reshape(targetQs, (16, 16))          # (16, 16, 1)
+        #         next_reward = targetQs[next_action[0]][next_action[1]]
+
+        #         target = reward_b + gamma * next_reward
+
+        #     targets[i] = self.model.predict(state_b)               # Qネットワークの出力
+        #     #if bot_color == 'r' : print(i, reward_b, action_b[0], action_b[1], target, targets[i][action_b[0]])
+
+        #     # 学習する報酬の手調整
+        #     #ban = np.array( [ [4,8], [7,8], [7,7], [8,12], [8,9], [8,8], [8,7], [8,4], [9,9], [9,8], [12,8]  ] )
+        #     for k in range(16):
+        #         for l in range(16):
+        #             if abs(targets[i][k][l]) > 0.95          : targets[i][k][l] = targets[i][k][l]*0.8  # 大きすぎる場合は少し調整を行う
+        #             #if k < 1 or l < 1 or k > 14 or l > 14 : targets[i][k][l] = 0                        # 領域外の報酬は０固定
+        #             #for a in ban:
+        #             #    if a[0] == k and a[1] == l        : targets[i][k][l] = 0   # 障害物座標の報酬は０固定
+
+        #     targets[i][action_b[0]][action_b[1]] = target          # 教師信号
+        #     np.set_printoptions(precision=1)
+        #     #if bot_color == 'r' : print(i, reward_b, action_b, target)
+
+        # # shiglayさんよりアドバイスいただき、for文の外へ修正しました
+        # self.model.fit(inputs, targets, epochs=1, verbose=0)  # 初回は時間がかかる epochsは訓練データの反復回数、verbose=0は表示なしの設定
 
 
 # [3]Experience ReplayとFixed Target Q-Networkを実現するメモリクラス
 class Memory:
     def __init__(self, max_size=1000):
+        '''
+        buffer: deque(state, action, next_state, reward)
+            - state: ndarray 4D, (1, 16, 16, 7)
+            - action: tuple, (x, y)
+            - next_state: ndarray 4D, (1, 16, 16, 7)
+            - reward: int 
+        '''
         self.buffer = deque(maxlen=max_size)
         #self.max_size = max_size
         #self.reset()
@@ -132,9 +170,10 @@ class Memory:
 
     def sample(self, batch_size):
         idx = np.random.choice(np.arange(len(self.buffer)), size=batch_size, replace=False)
-        return [self.buffer[ii] for ii in idx]
+        samples = [self.buffer[ii] for ii in idx]
+        return Transition(*zip(*samples))
 
-    def len(self):
+    def __len__(self):
         return len(self.buffer)
 
 

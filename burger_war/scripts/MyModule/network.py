@@ -6,9 +6,9 @@ ref: https://www.pynote.info/entry/keras-resnet-implementation
 from functools import reduce
 
 from keras import backend as K
-from keras.models import Model
-from keras.layers import *
-from keras.regularizers import l2
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import *
+from tensorflow.keras.regularizers import l2
 
 
 def compose(*funcs):  # compose(f1, f2, f3) = f3(f2(f1))
