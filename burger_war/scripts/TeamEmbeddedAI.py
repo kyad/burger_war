@@ -603,8 +603,16 @@ class RandomBot():
                             writer.writerow([self.score[0], self.score[1], time.time()])
                         # 試合終了時に学習を実行する
                         self.train(epochs=10)
-                        self.mainQN.model.save_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')            # モデルの保存
-                        self.restart()                                          # 試合再開
+                        # モデルの保存
+                        while True:
+                            try:
+                                self.mainQN.model.save_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')
+                                break
+                            except:
+                                rospy.logwarn('%s: save_weights error. Retry' % self.my_color)
+                                time.sleep(1)
+                        # 試合再開
+                        self.restart()
                         r.sleep()
                 else:
                     #if self.timer % turnEnd == 0 :
