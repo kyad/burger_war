@@ -55,7 +55,7 @@ class QNetwork:
         self.debug_log = True
 
         #self.model = create_unet()
-        self.model = resnet()
+        self.model = resnet(input_shape=(16, 16, 7), num_layers=[3, 4, 3])
 
         #self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
         #self.optimizer = Adam()
@@ -134,7 +134,7 @@ class Memory:
         idx = np.random.choice(np.arange(len(self.buffer)), size=batch_size, replace=False)
         return [self.buffer[ii] for ii in idx]
 
-    def len(self):
+    def __len__(self):
         return len(self.buffer)
 
 

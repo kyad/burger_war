@@ -87,7 +87,7 @@ def residual_blocks(block_function, filters, repetitions, is_first_layer):
 
     return f
 
-def resnet(input_shape=(16, 16, 7)):
+def resnet(input_shape=(16, 16, 7), num_layers=[3, 4, 3]):
 
     input = Input(shape=input_shape)
     conv1 = compose(
@@ -101,11 +101,10 @@ def resnet(input_shape=(16, 16, 7)):
     block = pool1
 
     filters = [32, 64, 128]
-    repetitions = [3, 4, 3]
     for i in range(3):
         block = residual_blocks(
             block_function=basic_block, filters=filters[i],
-            repetitions=repetitions[i], is_first_layer=(i == 0)
+            repetitions=num_layers[i], is_first_layer=(i == 0)
         )(block)
 
     block = compose(
