@@ -40,6 +40,7 @@ fieldScale = 2.4  # 競技場の広さ
 #turnEnd    = 10   # 何ターンで１試合を終了させるか
 TimeLimit = 180
 #TimeLimit = 30
+realTimeFactor = 1
 maxGoalItrCount = 10  # Max number of iteration to determine goal. (STAY will be chosen if exceeded)
 maxSameGoalCount = 3  # Max number to approve same goal with previous one.
 marginFromObstacle = 0.6  # Margin to be kept from obstacle surface (unit: cell. Field width 2.4 meters is equal to 16 cells)
@@ -375,7 +376,7 @@ class RandomBot():
     def calc_reward(self):
         reward = 0
         #if self.timer > turnEnd:
-        if self.time > TimeLimit:
+        if self.time > (TimeLimit / realTimeFactor):
             # 試合終了(Time out)
             if self.score[0] > self.score[1]:
                 reward =  1
