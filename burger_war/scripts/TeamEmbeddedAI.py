@@ -593,7 +593,7 @@ class RandomBot():
             if self.training == True:
                 # 試合終了した場合
                 if self.my_color == 'r':
-                    rospy.loginfo('me=%f enemy=%f reward=%d' % (self.score[0], self.score[1], self.reward))
+                    rospy.loginfo('me=%d enemy=%d reward=%d' % (self.score[0], self.score[1], self.reward))
                     if abs(self.reward) == 1:
                         if   self.reward == 0 : rospy.loginfo('Draw')
                         elif self.reward == 1 : rospy.loginfo('Win!')
