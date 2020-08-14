@@ -248,7 +248,6 @@ class RandomBot():
     def __init__(self, bot_name, color='r', Sim_flag=True):
         self.name     = bot_name                                        # bot name 
         self.vel_pub  = rospy.Publisher('cmd_vel', Twist, queue_size=1) # velocity publisher
-        self.sta_pub  = rospy.Publisher("/gazebo/model_states", ModelStates, latch=True) # 初期化用
         self.timer    = 0                                               # 対戦時間
         self.time     = 0.0                                             # 対戦時間(審判から取得)
         self.reward   = 0                                               # 報酬
