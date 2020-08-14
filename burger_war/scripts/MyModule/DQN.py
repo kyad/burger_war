@@ -71,7 +71,7 @@ class QNetwork:
             self.model.summary()
 
     # 重みの学習
-    def replay(self, memory, batch_size, gamma, targetQN):
+    def replay(self, memory, batch_size, gamma, targetQN, bot_color='r'):
         #inputs  = np.zeros((batch_size, 16, 16, 7))
         #targets = np.zeros((batch_size, 16, 16, 1))
 
@@ -91,6 +91,7 @@ class QNetwork:
         pred = targetQN.model.predict(next_state_batch).max(1).max(1)
         next_state_values = pred.reshape(pred.shape[0])
         y_target = reward_batch.reshape(batch_size) + gamma * next_state_values
+        y_target = tf.convert_to_tensor(y_target, dtype=tf.float32)
 
         # actionのindexを作成
         zero_idx = np.zeros((batch_size, 1)).astype('int32')
@@ -106,6 +107,8 @@ class QNetwork:
         variables = variables = self.model.trainable_variables
         gradients = tape.gradient(loss, variables)
         self.optimizer.apply_gradients(zip(gradients, variables))
+
+        return loss
 
         # for i, (state_b, action_b, reward_b, next_state_b) in enumerate(mini_batch):
         #     inputs[i:i + 1] = state_b

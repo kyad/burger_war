@@ -1,5 +1,4 @@
 import numpy as np
-from tqdm import tqdm
 
 import DQN
 
@@ -20,10 +19,12 @@ if __name__ == "__main__":
         print('episode {}'.format(episode))
         
         state = np.random.rand(16*16*7).reshape(1, 16, 16, 7)
+        action1 = [7, 7]
+        action2 = [8, 8]
 
         for step in range(NUM_STEP):
 
-            action, _ = actor.get_action(state, mainQN, 'r', True, False)
+            action, _ = actor.get_action(state, step, mainQN, 'r', action1, action2, 1, True, False, False)
 
             if step == NUM_STEP - 1:
                 next_state = np.zeros((1,16,16,7))
@@ -37,7 +38,8 @@ if __name__ == "__main__":
             state = next_state 
 
         print('start learning')
-        for epoch in tqdm(range(10)):
-            mainQN.replay(memory, 40, 0.97, targetQN)
+        for epoch in range(10):
+            loss = mainQN.replay(memory, 40, 0.97, targetQN)
+            print('epoch:{}, loss:{:.8f}'.format(epoch, loss))
 
         targetQN.model.set_weights(mainQN.model.get_weights())

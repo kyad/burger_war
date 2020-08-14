@@ -462,25 +462,30 @@ class RandomBot():
 
         if self.timer > 6:
             # メモリの更新する
-            self.memory.add((self.state, action, reward, next_state))               # メモリの更新する
+            self.memory.add((self.state, action, next_state, reward))               # メモリの更新する
             self.state  = next_state                                                # 状態更新
-        
-            # Qネットワークの重みを学習・更新する replay
-            if self.training == True : learn = 1
-            else                     : learn = 0
-            if self.my_color == 'b'  : learn = 0
-            batch_size = 40   # Q-networkを更新するバッチの大きさ
-            gamma = 0.97      # 割引係数
-            if (batch_size >= 2 and len(self.memory) > batch_size) and learn:
-                #print('call replay timer=', self.timer)
-                self.mainQN.replay(self.memory, batch_size, gamma, self.targetQN, self.my_color)
-            self.targetQN.model.set_weights(self.mainQN.model.get_weights())
         
         sys.stdout.flush()
         self.reward = reward
         
         return Twist()
 
+    # DQNの学習
+    def training(self, epochs):
+        # Qネットワークの重みを学習・更新する replay        
+        if self.training == True : learn = True
+        else                     : learn = False
+        if self.my_color == 'b'  : learn = False
+
+        batch_size = 40   # Q-networkを更新するバッチの大きさ
+        gamma = 0.97      # 割引係数
+
+        if learn:
+            for epoch in range(epochs):
+                loss = self.mainQN.replay(self.memory, batch_size, gamma, self.targetQN, self.my_color)
+                print('epoch:{}, loss:{:.2f}'.format(epoch, loss))
+
+        self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
     # シュミレーション再開
     def restart(self):
@@ -573,6 +578,7 @@ class RandomBot():
         # Qネットワークとメモリ、Actorの生成--------------------------------------------------------
         learning_rate = 0.0005          # Q-networkの学習係数
         memory_size   = 1000             # バッファーメモリの大きさ
+        train_epochs = 10               # 学習の反復回数
         #self.Read_DNN_Model(learning_rate, memory_size)
         self.flag_ThreadEnd = False
         self.thread = threading.Thread(target=self.Read_DNN_Model, args=([learning_rate, memory_size]), name='Read_DNN_Model_Thread')
@@ -589,12 +595,14 @@ class RandomBot():
                 if self.my_color == 'r':
                     print('me', self.score[0], 'enemy', self.score[1], 'reward', self.reward)
                     if abs(self.reward) == 1:
-                        if   self.reward == 0 : print('Draw')
-                        elif self.reward == 1 : print('Win!')
+                        if self.reward == 1 : print('Win!')
                         else                  : print('Lose')
                         with open('result.csv', 'a') as f:
                             writer = csv.writer(f, lineterminator='\n')
                             writer.writerow([self.score[0], self.score[1], time.time()])
+
+                        # 試合が終了したら、学習を実行する
+                        self.training(epochs=train_epochs)
                         self.mainQN.model.save_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')            # モデルの保存
                         self.restart()                                          # 試合再開
                         r.sleep()
