@@ -30,8 +30,8 @@ import rosparam
 # 強化学習DQN (Deep Q Network)
 from MyModule import DQN
 
-import tensorflow
-graph = tensorflow.get_default_graph()
+# import tensorflow
+# graph = tensorflow.get_default_graph()
 
 timeScale  = 1    # １秒間で何回座標計算するか？
 #timeScale  = 4    # １秒間で何回座標計算するか？ 
@@ -471,21 +471,21 @@ class RandomBot():
         return Twist()
 
     # DQNの学習
-    def training(self, epochs):
+    def train(self, epochs):
         # Qネットワークの重みを学習・更新する replay        
-        if self.training == True : learn = True
-        else                     : learn = False
-        if self.my_color == 'b'  : learn = False
+        if self.training == True : learn = 1
+        else                     : learn = 0
+        if self.my_color == 'b'  : learn = 0
 
         batch_size = 40   # Q-networkを更新するバッチの大きさ
         gamma = 0.97      # 割引係数
 
         if learn:
             for epoch in range(epochs):
-                loss = self.mainQN.replay(self.memory, batch_size, gamma, self.targetQN, self.my_color)
-                print('epoch:{}, loss:{:.2f}'.format(epoch, loss))
+                loss = self.mainQN.replay(self.memory, batch_size, gamma)
+                print('epoch:{}, loss:{}'.format(epoch, loss))
 
-        self.targetQN.model.set_weights(self.mainQN.model.get_weights())
+        #self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
     # シュミレーション再開
     def restart(self):
@@ -549,22 +549,22 @@ class RandomBot():
     # _/ スタート時に時間が掛かるので、別スレッドを立ててModel読み込みを行う
     # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     def Read_DNN_Model(self, learning_rate, memory_size):
-        global graph
-        with graph.as_default():
-            self.mainQN   = DQN.QNetwork(learning_rate=learning_rate)   # メインのQネットワーク
-            self.targetQN = DQN.QNetwork(learning_rate=learning_rate)   # 価値を計算するQネットワーク
-            self.memory   = DQN.Memory(max_size=memory_size)
-            self.actor    = DQN.Actor()
-        
-            # 重みの読み込み
-            if self.sim_flag == True :
-                try:
-                    self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
-                except:
-                    print('No weight file found. Train from scratch')
-            else                     :
-                self.mainQN.model.load_weights('../wss/Yoshihama0901_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
-            self.targetQN.model.set_weights(self.mainQN.model.get_weights())
+        # global graph
+        # with graph.as_default():
+        self.mainQN   = DQN.QNetwork(learning_rate=learning_rate)   # メインのQネットワーク
+        #self.targetQN = DQN.QNetwork(learning_rate=learning_rate)   # 価値を計算するQネットワーク
+        self.memory   = DQN.Memory(max_size=memory_size)
+        self.actor    = DQN.Actor()
+    
+        # 重みの読み込み
+        if self.sim_flag == True :
+            try:
+                self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
+            except:
+                print('No weight file found. Train from scratch')
+        else                     :
+            self.mainQN.model.load_weights('../wss/Yoshihama0901_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
+        #self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
 
     # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
@@ -578,7 +578,6 @@ class RandomBot():
         # Qネットワークとメモリ、Actorの生成--------------------------------------------------------
         learning_rate = 0.0005          # Q-networkの学習係数
         memory_size   = 1000             # バッファーメモリの大きさ
-        train_epochs = 10               # 学習の反復回数
         #self.Read_DNN_Model(learning_rate, memory_size)
         self.flag_ThreadEnd = False
         self.thread = threading.Thread(target=self.Read_DNN_Model, args=([learning_rate, memory_size]), name='Read_DNN_Model_Thread')
@@ -602,7 +601,7 @@ class RandomBot():
                             writer.writerow([self.score[0], self.score[1], time.time()])
 
                         # 試合が終了したら、学習を実行する
-                        self.training(epochs=train_epochs)
+                        self.train(epochs=10)
                         self.mainQN.model.save_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')            # モデルの保存
                         self.restart()                                          # 試合再開
                         r.sleep()

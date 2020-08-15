@@ -8,11 +8,8 @@ NUM_STEP = 100
 if __name__ == "__main__":
     
     mainQN = DQN.QNetwork()
-    targetQN = DQN.QNetwork()
     memory = DQN.Memory(max_size=1000)
     actor = DQN.Actor()
-
-    targetQN.model.set_weights(mainQN.model.get_weights())
 
     for episode in range(NUM_EPISODE):
         
@@ -39,7 +36,5 @@ if __name__ == "__main__":
 
         print('start learning')
         for epoch in range(10):
-            loss = mainQN.replay(memory, 40, 0.97, targetQN)
+            loss = mainQN.replay(memory, 40, 0.97)
             print('epoch:{}, loss:{:.8f}'.format(epoch, loss))
-
-        targetQN.model.set_weights(mainQN.model.get_weights())

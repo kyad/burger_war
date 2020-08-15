@@ -71,13 +71,13 @@ class QNetwork:
             self.model.summary()
 
     # 重みの学習
-    def replay(self, memory, batch_size, gamma, targetQN, bot_color='r'):
+    def replay(self, memory, batch_size, gamma):
         #inputs  = np.zeros((batch_size, 16, 16, 7))
         #targets = np.zeros((batch_size, 16, 16, 1))
 
         if len(memory) < batch_size:    # memoryにbatch_size以上のデータが保存されているか確認
-            print("memory size is smaller than batch size.")
-            return
+            print("memory size = {} is smaller than batch size = {}.".format(len(memory), batch_size))
+            batch_size = len(memory)
 
         mini_batch = memory.sample(batch_size)  # memoryからランダムにデータを取り出す
 
@@ -88,7 +88,7 @@ class QNetwork:
         next_state_batch = np.concatenate(mini_batch.next_state)  # (batch_size, 16, 16, 7)
 
         # 教師データの作成
-        pred = targetQN.model.predict(next_state_batch).max(1).max(1)
+        pred = self.model.predict(next_state_batch).max(1).max(1)
         next_state_values = pred.reshape(pred.shape[0])
         y_target = reward_batch.reshape(batch_size) + gamma * next_state_values
         y_target = tf.convert_to_tensor(y_target, dtype=tf.float32)
@@ -100,11 +100,12 @@ class QNetwork:
 
         # GradientTapeでy_predとlossを定義し、学習を実行する
         with tf.GradientTape() as tape:
-            y_pred = self.model(state_batch)
+            #state_batch = tf.convert_to_tensor(state_batch, dtype=tf.float32)
+            y_pred = self.model(state_batch.astype(np.float32))
             y_pred = tf.gather_nd(y_pred, action_batch_idx)
             loss = huberloss(y_target, y_pred)
 
-        variables = variables = self.model.trainable_variables
+        variables = self.model.trainable_variables
         gradients = tape.gradient(loss, variables)
         self.optimizer.apply_gradients(zip(gradients, variables))
 
@@ -223,7 +224,7 @@ class Actor:
             #if bot_color == 'r' : print('Learned')
             predicted = True
 
-            retTargetQs = mainQN.model.predict(state)             # (1, 16, 16, 1)
+            retTargetQs = mainQN.model.predict(state.astype(np.float32))             # (1, 16, 16, 1)
             #if bot_color == 'r' : print_state_At(retTargetQs, 0)  # 予測結果を表示
             #retTargetQs = mainQN.model.predict(state)[0]          # (16, 16, 1)
             retTargetQs = retTargetQs[0]                          # (16, 16, 1)
