@@ -421,7 +421,7 @@ class RandomBot():
                     desti = np.array([ -0.60,  0.00])
                     yaw  = 0
                 elif self.timer <= 6 :
-                    desti = np.array([  0.00,  0.55])
+                    desti = np.array([  0.05,  0.55])
                     yaw  = -90
             
             rospy.loginfo('* Action * color=%s Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.my_color, self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
