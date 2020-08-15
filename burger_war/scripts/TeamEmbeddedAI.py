@@ -122,7 +122,7 @@ def get_destination(action, n=16):
             if row[0][i] == action[0] and row[0][1 - i] == action[1]:
                 action_f[0] = row[1][i]
                 action_f[1] = row[1][1 - i]
-                rospy.logwarn('Unreachable action is remapped: (%d, %d) -> (%.2f, %.2f)' % (action[0], action[1], action_f[0], action_f[1]))
+                rospy.loginfo('Unreachable action is remapped: (%d, %d) -> (%.2f, %.2f)' % (action[0], action[1], action_f[0], action_f[1]))
             if row[0][0] == row[0][1]:
                 break
 
@@ -400,7 +400,7 @@ class RandomBot():
         force_random_action = False   # Flag to force random action for 2nd and more trials. False for 1st trial.
         avoid_best_action = (self.same_action_count >= maxSameGoalCount)
         if avoid_best_action:
-            rospy.logwarn('Avoid choosing best action, choose 2nd to 5th best instead.');
+            rospy.loginfo('Avoid choosing best action, choose 2nd to 5th best instead.');
         for goal_itr_cnt in range(maxGoalItrCount):
             predicted = False
             if self.timer > 6:
@@ -433,7 +433,7 @@ class RandomBot():
             if is_valid_goal:
                 rospy.loginfo('[%d/%d] Navigation is done for valid goal set by %s.' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
             else:
-                rospy.logerr('[%d/%d] Navigation was cancelled due to invalid goal set by %s. Retrying...' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
+                rospy.loginfo('[%d/%d] Navigation was cancelled due to invalid goal set by %s. Retrying...' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
 
             # Judge whether to break the iteration or not. Break in case that:
             # 1) goal is predicted by DQN,
@@ -459,7 +459,7 @@ class RandomBot():
         # Count up if sequentially same action is chosen
         if (self.action == self.action2).all():
             self.same_action_count += 1
-            rospy.logwarn('Same goal is set for %d times (approved max %d times)' % (self.same_action_count, maxSameGoalCount))
+            rospy.loginfo('Same goal is set for %d times (approved max %d times)' % (self.same_action_count, maxSameGoalCount))
         else:
             self.same_action_count = 0
 
