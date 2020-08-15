@@ -112,7 +112,7 @@ class QNetwork:
             #if bot_color == 'r' : print(i, reward_b, action_b, target)
 
         # shiglayさんよりアドバイスいただき、for文の外へ修正しました
-        self.model.fit(inputs, targets, epochs=1, verbose=1)  # 初回は時間がかかる epochsは訓練データの反復回数、verbose=0は表示なしの設定
+        self.model.fit(inputs, targets, batch_size=batch_size, epochs=1, verbose=1)  # 初回は時間がかかる epochsは訓練データの反復回数、verbose=0は表示なしの設定
 
 
 # [3]Experience ReplayとFixed Target Q-Networkを実現するメモリクラス
