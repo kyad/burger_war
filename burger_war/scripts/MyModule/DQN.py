@@ -153,8 +153,8 @@ class Actor:
         flag = True
         while flag:
             flag   = False
-            #action = np.array( [int(3+np.random.rand()*11), int(3+np.random.rand()*11)] )
-            action = np.array( [1+int(np.random.rand()*14), int(1+np.random.rand()*14)] )
+            #action = np.array( [1+int(np.random.rand()*14), int(1+np.random.rand()*14)] )
+            action = np.array( [int(np.random.rand()*16), int(np.random.rand()*16)] )
             for a in ban:
                 if a[0] == action[0] and a[1] == action[1] : flag = True
         return action
