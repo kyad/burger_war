@@ -10,7 +10,11 @@
     <include file="$(find burger_navigation)/launch/burger_navigation.launch">
     </include>
 
-    <node pkg="burger_war" type="TeamEmbeddedAI.py" name="randomRun" output="screen"/>
+    <node pkg="burger_war" type="TeamEmbeddedAI.py" name="randomRun" output="screen">
+      <param name="model_file" value="../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5"/>
+      <param name="sim_flag" value="True"/>
+      <param name="training" value="True"/>
+    </node>
 
     <!-- END sample program node -->
 

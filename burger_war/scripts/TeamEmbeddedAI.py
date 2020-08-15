@@ -246,7 +246,7 @@ class RandomBot():
         return state
 
     # クラス生成時に最初に呼ばれる
-    def __init__(self, bot_name, color='r', Sim_flag=True):
+    def __init__(self, bot_name, color='r', model_file='../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5', sim_flag=False, training=False):
         self.name     = bot_name                                        # bot name 
         self.vel_pub  = rospy.Publisher('cmd_vel', Twist, queue_size=1) # velocity publisher
         self.timer    = 0                                               # 対戦時間
@@ -257,7 +257,9 @@ class RandomBot():
         self.my_color = color                                           # 自分の色情報
         self.en_color = 'b' if color=='r' else 'r'                      # 相手の色情報
         self.score    = np.zeros(20)                                    # スコア情報(以下詳細)
-        self.sim_flag = Sim_flag
+        self.model_file = model_file
+        self.sim_flag = sim_flag
+        self.training = training
          #  0:自分のスコア, 1:相手のスコア
          #  2:相手後ろ, 3:相手Ｌ, 4:相手Ｒ, 5:自分後ろ, 6:自分Ｌ, 7:自分Ｒ
          #  8:Tomato_N, 9:Tomato_S, 10:Omelette_N, 11:Omelette_S, 12:Pudding_N, 13:Pudding_S
@@ -276,7 +278,6 @@ class RandomBot():
         self.image_sub = rospy.Subscriber(camera_resource_name, Image, self.imageCallback, queue_size=10)
         self.debug_log_fname = None
         #self.debug_log_fname = 'log-' + datetime.datetime.now().strftime("%Y%m%d%H%M%S") + '-' + self.my_color + '.csv'
-        self.training = True and self.sim_flag
         self.debug_use_gazebo_my_pos = False
         self.debug_use_gazebo_enemy_pos = False
         self.debug_gazebo_my_x = np.nan
@@ -295,7 +296,10 @@ class RandomBot():
             with open(self.debug_log_fname, mode='a') as f:
                 f.write('my_x,my_y,my_qx,my_qy,my_qz,my_qw,my_ax,my_ay,my_az,enemy_x,enemy_y,enemy_qx,enemy_qy,enemy_qz,enemy_qw,enemy_ax,enemy_ay,enemy_az,circle_x,circle_y,circle_r,est_enemy_x,est_enemy_y,est_enemy_u,est_enemy_v,est_enemy_theta,gazebo_my_x,gazebo_my_y,gazebo_enemy_x,gazebo_enemy_y,diff_my_x,diff_my_y,diff_enemy_x,diff_enemy_y\n')
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction) # RESPECT @seigot]
-        
+
+        if self.training == True:
+            assert self.sim_flag == True
+
         # 初期状態を取得
         #self.state = np.zeros([1, 16, 16, 7])                        # 状態
         self.state = self.getState()
@@ -411,7 +415,7 @@ class RandomBot():
                 if not self.flag_ThreadEnd :
                     self.thread.join()
                     self.flag_ThreadEnd = True
-                action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.sim_flag, force_random_action, avoid_best_action)
+                action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.training, force_random_action, avoid_best_action)
                 # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
                 desti   = get_destination(action)
                 yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
@@ -513,7 +517,6 @@ class RandomBot():
 
         goal = MoveBaseGoal()
         name = 'red_bot' if self.my_color == 'r' else 'blue_bot'
-        #goal.target_pose.header.frame_id = name + '/map' if self.sim_flag == True else 'map'
         goal.target_pose.header.frame_id = "map"
 
         goal.target_pose.header.stamp = rospy.Time.now()
@@ -559,13 +562,13 @@ class RandomBot():
             self.actor    = DQN.Actor()
         
             # 重みの読み込み
-            if self.sim_flag == True :
+            if self.training == True:
                 try:
-                    self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
+                    self.mainQN.model.load_weights(self.model_file)     # 重みの読み込み
                 except:
                     rospy.loginfo('No weight file found. Train from scratch')
             else                     :
-                self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')     # 重みの読み込み
+                self.mainQN.model.load_weights(self.model_file)     # 重みの読み込み
             self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
 
@@ -591,7 +594,7 @@ class RandomBot():
             twist = self.calcTwist()    # 移動距離と角度を計算
             #self.vel_pub.publish(twist) # ROSに反映
             
-            if self.training == True:
+            if self.sim_flag == True:
                 # 試合終了した場合
                 if self.my_color == 'r':
                     rospy.loginfo('me=%d enemy=%d reward=%d' % (self.score[0], self.score[1], self.reward))
@@ -602,16 +605,17 @@ class RandomBot():
                         with open('result.csv', 'a') as f:
                             writer = csv.writer(f, lineterminator='\n')
                             writer.writerow([self.score[0], self.score[1], time.time()])
-                        # 試合終了時に学習を実行する
-                        self.train(epochs=10)
-                        # モデルの保存
-                        while True:
-                            try:
-                                self.mainQN.model.save_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')
-                                break
-                            except:
-                                rospy.logwarn('%s: save_weights error. Retry' % self.my_color)
-                                time.sleep(1)
+                        if self.training == True:
+                            # 試合終了時に学習を実行する
+                            self.train(epochs=10)
+                            # モデルの保存
+                            while True:
+                                try:
+                                    self.mainQN.model.save_weights(self.model_file)
+                                    break
+                                except:
+                                    rospy.logwarn('%s: save_weights error. Retry' % self.my_color)
+                                    time.sleep(1)
                         # 試合再開
                         self.reset()
                         self.restart()
@@ -619,14 +623,15 @@ class RandomBot():
                 else:
                     #if self.timer % turnEnd == 0 :
                     if self.time < 10 :
-                        # 重みの読み込み
-                        while True:
-                            try:
-                                self.mainQN.model.load_weights('../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5')
-                                break
-                            except:
-                                rospy.logwarn('%s: load_weights error. Retry' % self.my_color)
-                                time.sleep(1)
+                        if self.training == True:
+                            # 前回の試合でredが学習した重みの読み込み
+                            while True:
+                                try:
+                                    self.mainQN.model.load_weights(self.model_file)
+                                    break
+                                except:
+                                    rospy.logwarn('%s: load_weights error. Retry' % self.my_color)
+                                    time.sleep(1)
                         # 試合再開
                         self.reset()
             
@@ -734,21 +739,48 @@ class RandomBot():
             cv2.waitKey(1)
 
 if __name__ == '__main__':
-    
-    # sim環境用のフラグ。本番(実機動作)では、
-    #   ・リセット動作を行わない
-    #   ・学習を行わない
-    #   ・確率でのランダム動作を行わない
-    Sim_flag = True
-    
+    # ロボットの色。r(red)は学習側、b(blue)は学習の相手側
     try:
         rside = rosparam.get_param('enemyRun/rside')
     except:
         rside = 'r'
 
-    rospy.init_node('IntegAI_run')    # 初期化宣言 : このソフトウェアは"IntegAI_run"という名前
-    rospy.loginfo('**************** rside=%s' % rside)
-    bot = RandomBot('Team Integ AI', color=rside, Sim_flag=Sim_flag)
-    
-    bot.strategy()
+    try:
+        model_file = rosparam.get_param('randomRun/model_file')
+    except:
+        try:
+            model_file = rosparam.get_param('enemyRun/model_file')
+        except:
+            model_file = '../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5'
 
+    # sim環境で試合が終了したらリセットするかどうかのフラグ。
+    # 開発時・モデル評価時は、sim_flag = True とする。
+    # 本番では、sim_flag = False とし、
+    #   ・リセット動作を行わない
+    try:
+        sim_flag = rosparam.get_param('randomRun/sim_flag') # <type 'bool'>
+    except:
+        try:
+            sim_flag = rosparam.get_param('enemyRun/sim_flag') # <type 'bool'>
+        except:
+            sim_flag = False
+
+    # 学習を実施するかどうかのフラグ。
+    # 開発時は、training = True とする。
+    # モデル評価時・本番では、training = False とし、
+    #   ・学習を行わない
+    #   ・確率でのランダム動作を行わない
+    try:
+        training = rosparam.get_param('randomRun/training') # <type 'bool'>
+    except:
+        try:
+            training = rosparam.get_param('enemyRun/training') # <type 'bool'>
+        except:
+            training = False
+
+
+    rospy.init_node('IntegAI_run')    # 初期化宣言 : このソフトウェアは"IntegAI_run"という名前
+    rospy.loginfo('**************** rside=%s model_file=%s sim_flag=%s training=%s' % (rside, model_file, sim_flag, training))
+    bot = RandomBot('Team Integ AI', color=rside, model_file=model_file, sim_flag=sim_flag, training=training)
+
+    bot.strategy()

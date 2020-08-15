@@ -165,11 +165,11 @@ class Actor:
         result = np.array([ result[0][0], result[1][0] ])
         return result
 
-    def get_action(self, state, episode, mainQN, bot_color, action_bf, action_bf2, delta_score, sim_flag, force_random_action, avoid_best_action):   # [C]ｔ＋１での行動を返す
+    def get_action(self, state, episode, mainQN, bot_color, action_bf, action_bf2, delta_score, training, force_random_action, avoid_best_action):   # [C]ｔ＋１での行動を返す
 
         # 徐々に最適行動のみをとる、ε-greedy法
         #epsilon = 0.001 + 0.9 / (1.0+episode)
-        if sim_flag : epsilon = 0.1  # 学習時のランダム係数
+        if training : epsilon = 0.1  # 学習時のランダム係数
         else        : epsilon = 0.00  # 実機ではランダム動作を行わない
 
         # 移動禁止箇所
