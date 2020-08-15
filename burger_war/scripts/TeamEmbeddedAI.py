@@ -485,10 +485,12 @@ class RandomBot():
         if self.my_color == 'b'  : learn = 0
         batch_size = 40   # Q-networkを更新するバッチの大きさ
         gamma = 0.97      # 割引係数
-        if (batch_size >= 2 and len(self.memory) > batch_size) and learn:
+        if learn:
             for epoch in range(epochs):
-                self.mainQN.replay(self.memory, batch_size, gamma, self.targetQN, self.my_color)
-        self.targetQN.model.set_weights(self.mainQN.model.get_weights())
+                #self.mainQN.replay(self.memory, batch_size, gamma, self.targetQN, self.my_color)
+                loss = self.mainQN.replay(self.memory, batch_size, gamma)
+                print('epoch:{}, loss:{}'.format(epoch, loss))
+        #self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
     # 試合終了して次の試合を始める際に内部状態をリセット
     def reset(self):
@@ -557,7 +559,7 @@ class RandomBot():
         global graph
         with graph.as_default():
             self.mainQN   = DQN.QNetwork(learning_rate=learning_rate)   # メインのQネットワーク
-            self.targetQN = DQN.QNetwork(learning_rate=learning_rate)   # 価値を計算するQネットワーク
+            #self.targetQN = DQN.QNetwork(learning_rate=learning_rate)   # 価値を計算するQネットワーク
             self.memory   = DQN.Memory(max_size=memory_size)
             self.actor    = DQN.Actor()
         
@@ -569,7 +571,7 @@ class RandomBot():
                     rospy.loginfo('No weight file found. Train from scratch')
             else                     :
                 self.mainQN.model.load_weights(self.model_file)     # 重みの読み込み
-            self.targetQN.model.set_weights(self.mainQN.model.get_weights())
+            #self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
 
     # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
