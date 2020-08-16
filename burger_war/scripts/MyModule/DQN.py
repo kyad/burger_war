@@ -67,8 +67,8 @@ def total_loss(y_true, y_pred):
 
 # [2]Q関数をディープラーニングのネットワークをクラスとして定義
 class QNetwork:
-    def __init__(self, learning_rate=0.01):
-        self.debug_log = True
+    def __init__(self, debug_log=False, learning_rate=0.01):
+        self.debug_log = debug_log
 
         #self.model = create_unet()
         self.model = resnet(input_shape=(16, 16, 7), num_layers=[3, 4, 3])
@@ -166,6 +166,7 @@ class Memory:
         #self.reset()
 
     def reset(self):
+        # 前の試合のmemoryも学習に使うため、memoryは消さない
         pass
         #self.buffer = deque(maxlen=self.max_size)
 
@@ -184,8 +185,8 @@ class Memory:
 # [4]カートの状態に応じて、行動を決定するクラス
 # アドバイスいただき、引数にtargetQNを使用していたのをmainQNに修正しました
 class Actor:
-    def __init__(self):
-        self.debug_log = True
+    def __init__(self, debug_log=False):
+        self.debug_log = debug_log
 
     # 移動先をランダムに生成
     def generateRandomDestination(self):
