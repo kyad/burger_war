@@ -6,3 +6,7 @@
    cd ~/catkin_ws/src/burger_war
    pip install -r requirements.txt
    ```
+
+# 参考にしたURL
+- https://qiita.com/sugulu/items/bc7c70e6658f204f85f9
+- http://home.q00.itscom.net/otsuki/alphaZero.pdf
