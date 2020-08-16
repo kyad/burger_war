@@ -50,6 +50,20 @@ def huberloss(y_true, y_pred):
     loss = tf.where(cond, L2, L1)  # Keras does not cover where function in tensorflow :-(
     return K.mean(loss)
 
+def prob_loss(y_true, y_pred):
+    y_t = y_true[0]
+    y_p = y_pred[0]
+    return - K.mean(y_t * K.log(y_p))
+
+def reward_loss(y_true, y_pred):
+    y_t = y_true[1]
+    y_p = y_pred[1]
+    return K.mean(K.square(y_t - y_p))
+
+def total_loss(y_true, y_pred):
+    prob_l = prob_loss(y_true, y_pred)
+    reward_l = reward_loss(y_true, y_pred)
+    return prob_l + reward_l
 
 # [2]Q関数をディープラーニングのネットワークをクラスとして定義
 class QNetwork:
@@ -65,7 +79,8 @@ class QNetwork:
         #self.optimizer = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
         self.optimizer = SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True)
 
-        self.model.compile(loss=huberloss, optimizer=self.optimizer)
+        #self.model.compile(loss=huberloss, optimizer=self.optimizer)
+        self.model.compile(loss=total_loss, optimizer=self.optimizer)
 
         if self.debug_log == True:
             self.model.summary()
@@ -77,31 +92,21 @@ class QNetwork:
 
         if len(memory) < batch_size:    # memoryにbatch_size以上のデータが保存されているか確認
             print("memory size = {} is smaller than batch size = {}.".format(len(memory), batch_size))
-            return
+            batch_size = len(memory)
 
         mini_batch = memory.sample(batch_size)
 
         # それぞれのデータを結合する
         state_batch = np.concatenate(mini_batch.state)                          # (batch_size, 16, 16, 7)
-        action_batch = np.concatenate(mini_batch.action).reshape(batch_size, 2)       # (batch_size, 2)
+        #action_batch = np.concatenate(mini_batch.action).reshape(batch_size, 2)       # (batch_size, 2)
         reward_batch = np.array(mini_batch.reward).reshape(batch_size, 1)       # (batch_size, 1)
         next_state_batch = np.concatenate(mini_batch.next_state)  # (batch_size, 16, 16, 7)
 
         # 教師データの作成
-        pred = self.model.predict(next_state_batch).max(1).max(1)
-        pred = pred.reshape(pred.shape[0])
-        y_target = reward_batch.reshape(batch_size) + gamma * pred
-
-        targets = self.model.predict(state_batch) # (batch_size, 16, 16, 1)
-
-        # 学習する報酬の手調整
-        large_mask = np.array(map(lambda x: x > 0.95, targets))  # (batch_size, 16, 16, 1), for python 2
-        #large_mask = np.array([*map(lambda x: x > 0.95, targets)])  # (batch_size, 16, 16, 1), for python 3
-        targets[large_mask] *= 0.8 
-
-        targets[np.arange(batch_size), action_batch[:, 0], action_batch[:, 1], 0] = y_target
-
-        loss = self.model.train_on_batch(state_batch, targets)
+        prob_true, reward_true = self.model.predict(next_state_batch)   # (batch_size, 16, 16, 1), (batch_size, 1)
+        reward_true = reward_batch + gamma * reward_true
+        
+        loss = self.model.train_on_batch(x=state_batch, y=[prob_true, reward_true], return_dict=True)
 
         return loss
 
@@ -219,7 +224,7 @@ class Actor:
             #if bot_color == 'r' : print('Learned')
             predicted = True
 
-            retTargetQs = mainQN.model.predict(state)             # (1, 16, 16, 1)
+            retTargetQs, reward = mainQN.model.predict(state)             # (1, 16, 16, 1), (1, 1)
             #if bot_color == 'r' : print_state_At(retTargetQs, 0)  # 予測結果を表示
             #retTargetQs = mainQN.model.predict(state)[0]          # (16, 16, 1)
             retTargetQs = retTargetQs[0]                          # (16, 16, 1)

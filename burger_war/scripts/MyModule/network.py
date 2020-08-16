@@ -94,9 +94,9 @@ def resnet(input_shape=(16, 16, 7), num_layers=[3, 4, 3]):
         baseConv2D(filters=32, kernel_size=(7, 7)),
         BatchNormalization(),
         Activation('relu'),
-    )(input)
+    )(input)    # (32, 16, 16)
 
-    pool1 = MaxPooling2D(pool_size=(3, 3), strides=(1, 1), padding='same')(conv1)
+    pool1 = MaxPooling2D(pool_size=(3, 3), strides=(1, 1), padding='same')(conv1)   # (32, 16, 16)
 
     block = pool1
 
@@ -105,17 +105,27 @@ def resnet(input_shape=(16, 16, 7), num_layers=[3, 4, 3]):
         block = residual_blocks(
             block_function=basic_block, filters=filters[i],
             repetitions=num_layers[i], is_first_layer=(i == 0)
-        )(block)
+        )(block)    # (32, 16, 16) -> (64, 16, 16) -> (128, 16, 16)
+    
+    block = BatchNormalization()(block)
+    block = Activation('relu')(block)
 
-    block = compose(
-        BatchNormalization(),
-        Activation('relu'),
-        baseConv2D(filters=1, kernel_size=(3, 3)),
-        BatchNormalization(),
-        Activation('tanh'),
-    )(block)
+    # 行動予測部
+    out_prob = baseConv2D(filters=1, kernel_size=(3, 3))(block)  # (1, 16, 16)
+    out_prob = BatchNormalization()(out_prob)
+    out_prob = Reshape((256,), input_shape=(16, 16, 1))(out_prob)
+    out_prob = Activation('softmax')(out_prob)
+    out_prob = Reshape((16, 16, 1), input_shape=(256,), name='prob_output')(out_prob)
 
-    return Model(inputs=input, outputs=block)
+    # 勝敗予測部
+    out_reward = baseConv2D(filters=1, kernel_size=(3, 3))(block)  # (1, 16, 16)
+    out_reward = BatchNormalization()(out_reward)
+    out_reward = Activation('relu')(out_reward)
+    out_reward = Flatten()(out_reward)  # (256)
+    out_reward = Dense(1, kernel_regularizer=l2(1.e-4))(out_reward) # (1)
+    out_reward = Activation('tanh', name='reward_output')(out_reward)
+
+    return Model(inputs=input, outputs=[out_prob, out_reward])
 
 
 # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
