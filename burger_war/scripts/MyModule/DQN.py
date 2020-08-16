@@ -161,6 +161,7 @@ class Memory:
         #self.reset()
 
     def reset(self):
+        # 前の試合のmemoryも学習に使うため、memoryは消さない
         pass
         #self.buffer = deque(maxlen=self.max_size)
 
