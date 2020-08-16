@@ -489,7 +489,7 @@ class RandomBot():
             for epoch in range(epochs):
                 #self.mainQN.replay(self.memory, batch_size, gamma, self.targetQN, self.my_color)
                 loss = self.mainQN.replay(self.memory, batch_size, gamma)
-                print('epoch:{}, loss:{}'.format(epoch, loss))
+                rospy.loginfo('epoch:{}, loss:{}'.format(epoch, loss))
         #self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
     # 試合終了して次の試合を始める際に内部状態をリセット
