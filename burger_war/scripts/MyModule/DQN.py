@@ -51,19 +51,15 @@ def huberloss(y_true, y_pred):
     return K.mean(loss)
 
 def prob_loss(y_true, y_pred):
-    y_t = y_true[0]
-    y_p = y_pred[0]
-    return - K.mean(y_t * K.log(y_p))
+    y_t = y_true
+    y_p = y_pred
+    return - K.mean(K.sum(y_t * K.log(y_p), axis=[1, 2, 3]))
 
 def reward_loss(y_true, y_pred):
-    y_t = y_true[1]
-    y_p = y_pred[1]
+    y_t = y_true
+    y_p = y_pred
     return K.mean(K.square(y_t - y_p))
 
-def total_loss(y_true, y_pred):
-    prob_l = prob_loss(y_true, y_pred)
-    reward_l = reward_loss(y_true, y_pred)
-    return prob_l + reward_l
 
 # [2]Q関数をディープラーニングのネットワークをクラスとして定義
 class QNetwork:
@@ -80,7 +76,7 @@ class QNetwork:
         self.optimizer = SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True)
 
         #self.model.compile(loss=huberloss, optimizer=self.optimizer)
-        self.model.compile(loss=total_loss, optimizer=self.optimizer)
+        self.model.compile(loss=[prob_loss, reward_loss], optimizer=self.optimizer, loss_weights=[1.0, 1.0])
 
         if self.debug_log == True:
             self.model.summary()
