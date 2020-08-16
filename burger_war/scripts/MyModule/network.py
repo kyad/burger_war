@@ -29,9 +29,18 @@ def baseConv2D(*args, **kwargs):
     conv_kwargs.update(kwargs)
     return Conv2D(*args, **conv_kwargs)
 
-def bn_relu_conv(*args, **kwargs):
+def mobileNet(filters, kernel_size=(3, 3)):
+    net = compose(
+        DepthwiseConv2D(kernel_size=kernel_size, padding='same'),
+        BatchNormalization(),
+        Activation('relu'),
+        baseConv2D(filters=filters, kernel_size=(1, 1)),
+    )
+    return net
+
+def bn_relu_conv(filters, kernel_size=(3, 3)):
     '''batch mormalization -> ReLU -> conv2dを作成する'''
-    return compose(BatchNormalization(), Activation('relu'), baseConv2D(*args, **kwargs))
+    return compose(BatchNormalization(), Activation('relu'), mobileNet(filters=filters, kernel_size=kernel_size))
 
 def shortcut(x, residual):
     '''shortcut connectionを作成する'''
@@ -62,7 +71,7 @@ def basic_block(filters, is_first_block_of_first_layer):
         if is_first_block_of_first_layer:
             # conv1 で batch normalization -> ReLU はすでに適用済みなので、
             # max pooling の直後の residual block は畳み込みから始める。
-            conv1 = baseConv2D(filters=filters, kernel_size=(3, 3))(x)
+            conv1 = mobileNet(filters=filters, kernel_size=(3, 3))(x)
         else:
             conv1 = bn_relu_conv(filters=filters, kernel_size=(3, 3))(x)
 
@@ -91,7 +100,7 @@ def resnet(input_shape=(16, 16, 7), num_layers=[3, 4, 3]):
 
     input = Input(shape=input_shape)
     conv1 = compose(
-        baseConv2D(filters=32, kernel_size=(7, 7)),
+        mobileNet(filters=32, kernel_size=(7, 7)),
         BatchNormalization(),
         Activation('relu'),
     )(input)    # (32, 16, 16)
@@ -111,14 +120,14 @@ def resnet(input_shape=(16, 16, 7), num_layers=[3, 4, 3]):
     block = Activation('relu')(block)
 
     # 行動予測部
-    out_prob = baseConv2D(filters=1, kernel_size=(3, 3))(block)  # (1, 16, 16)
+    out_prob = mobileNet(filters=1, kernel_size=(3, 3))(block)  # (1, 16, 16)
     out_prob = BatchNormalization()(out_prob)
     out_prob = Reshape((256,), input_shape=(16, 16, 1))(out_prob)
     out_prob = Activation('softmax')(out_prob)
     out_prob = Reshape((16, 16, 1), input_shape=(256,), name='prob_output')(out_prob)
 
     # 勝敗予測部
-    out_reward = baseConv2D(filters=1, kernel_size=(3, 3))(block)  # (1, 16, 16)
+    out_reward = mobileNet(filters=1, kernel_size=(3, 3))(block)  # (1, 16, 16)
     out_reward = BatchNormalization()(out_reward)
     out_reward = Activation('relu')(out_reward)
     out_reward = Flatten()(out_reward)  # (256)

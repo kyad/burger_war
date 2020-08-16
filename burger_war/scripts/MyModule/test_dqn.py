@@ -7,7 +7,7 @@ NUM_STEP = 100
 
 if __name__ == "__main__":
     
-    mainQN = DQN.QNetwork()
+    mainQN = DQN.QNetwork(debug_log=True)
     memory = DQN.Memory(max_size=1000)
     #actor = DQN.Actor()
 
