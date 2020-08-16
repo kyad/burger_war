@@ -379,8 +379,7 @@ class RandomBot():
     # 報酬の計算
     def calc_reward(self):
         reward = 0
-        #if self.timer > turnEnd:
-        if self.time > (TimeLimit / realTimeFactor):
+        if self.time >= (TimeLimit / realTimeFactor):
             # 試合終了(Time out)
             if self.score[0] > self.score[1]:
                 reward =  1
@@ -397,84 +396,86 @@ class RandomBot():
     # _/ 行動計算のメイン部F
     # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     def calcTwist(self):
-        
-        self.timer += 1
+        in_time_limit = (self.time < (TimeLimit / realTimeFactor))
+        if in_time_limit == True:
+            self.timer += 1
 
-        # Iterate until valid plan is confirmed in case of random action (No iteration for predicted action)
-        force_random_action = False   # Flag to force random action for 2nd and more trials. False for 1st trial.
-        avoid_best_action = (self.same_action_count >= maxSameGoalCount)
-        if avoid_best_action:
-            rospy.loginfo('Avoid choosing best action, choose 2nd to 5th best instead.');
-        for goal_itr_cnt in range(maxGoalItrCount):
-            predicted = False
-            if self.timer > 6:
-                #tmp = np.transpose(self.state, (0, 3, 1, 2))
-                #for i in range(0, 7) : print(i, tmp[0][i])
-    
-                # Get action (predicted = True if predicted, otherwise random selection)
-                if not self.flag_ThreadEnd :
-                    self.thread.join()
-                    self.flag_ThreadEnd = True
-                action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.training, force_random_action, avoid_best_action)
-                # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
-                desti   = get_destination(action)
-                yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
-            else:
-                action = np.array([ 0,  0])
-                if self.timer <= 2 :
-                    desti = np.array([ -0.60,  0.00])
-                    yaw  = 0
-                elif self.timer <= 6 :
-                    desti = np.array([  0.05,  0.55])
-                    yaw  = -90
-            
-            rospy.loginfo('* Action * color=%s Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.my_color, self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
-            
-            # Actionに従った行動  目的地の設定 (X, Y, Yaw)
-            is_valid_goal = self.setGoal(desti[0], desti[1], yaw, predicted)  # Returns True if valid goal is set
+            # Iterate until valid plan is confirmed in case of random action (No iteration for predicted action)
+            force_random_action = False   # Flag to force random action for 2nd and more trials. False for 1st trial.
+            avoid_best_action = (self.same_action_count >= maxSameGoalCount)
+            if avoid_best_action:
+                rospy.loginfo('Avoid choosing best action, choose 2nd to 5th best instead.');
+            for goal_itr_cnt in range(maxGoalItrCount):
+                predicted = False
+                if self.timer > 6:
+                    #tmp = np.transpose(self.state, (0, 3, 1, 2))
+                    #for i in range(0, 7) : print(i, tmp[0][i])
 
-            # Print messages about goal
-            if is_valid_goal:
-                rospy.loginfo('[%d/%d] Navigation is done for valid goal set by %s.' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
-            else:
-                rospy.loginfo('[%d/%d] Navigation was cancelled due to invalid goal set by %s. Retrying...' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
+                    # Get action (predicted = True if predicted, otherwise random selection)
+                    if not self.flag_ThreadEnd :
+                        self.thread.join()
+                        self.flag_ThreadEnd = True
+                    action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.training, force_random_action, avoid_best_action)
+                    # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
+                    desti   = get_destination(action)
+                    yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
+                else:
+                    action = np.array([ 0,  0])
+                    if self.timer <= 2 :
+                        desti = np.array([ -0.60,  0.00])
+                        yaw  = 0
+                    elif self.timer <= 6 :
+                        desti = np.array([  0.05,  0.55])
+                        yaw  = -90
 
-            # Judge whether to break the iteration or not. Break in case that:
-            # 1) goal is predicted by DQN,
-            # 2) random goal is valid.
-            if is_valid_goal or predicted:
-                # Successfully goal is set. Break the iteration.
-                break
+                rospy.loginfo('* Action * color=%s Time=%2d : %4.2f,  Score=(%2d,%2d), Position=(%4.2f, %4.2f),  Destination=(%4.2f, %4.2f, %4.0f[deg])' % (self.my_color, self.timer, self.time, self.score[0], self.score[1], self.pos[0], self.pos[1], desti[0], desti[1], yaw*360/np.pi))
 
-            # Here goal is random and invalid. Need to try again. Note that random action is forced next time.
-            if not predicted:
-                force_random_action = True
+                # Actionに従った行動  目的地の設定 (X, Y, Yaw)
+                is_valid_goal = self.setGoal(desti[0], desti[1], yaw, predicted)  # Returns True if valid goal is set
 
-            #self.restart()  # ******* 強制Restart用 *******
-        
+                # Print messages about goal
+                if is_valid_goal:
+                    rospy.loginfo('[%d/%d] Navigation is done for valid goal set by %s.' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
+                else:
+                    rospy.loginfo('[%d/%d] Navigation was cancelled due to invalid goal set by %s. Retrying...' % (goal_itr_cnt + 1, maxGoalItrCount, 'prediction' if predicted else 'random selection'))
+
+                # Judge whether to break the iteration or not. Break in case that:
+                # 1) goal is predicted by DQN,
+                # 2) random goal is valid.
+                if is_valid_goal or predicted:
+                    # Successfully goal is set. Break the iteration.
+                    break
+
+                # Here goal is random and invalid. Need to try again. Note that random action is forced next time.
+                if not predicted:
+                    force_random_action = True
+
+                #self.restart()  # ******* 強制Restart用 *******
+
         # Action後の状態と報酬を取得
         next_state = self.getState()                                            # Action後の状態
         reward     = self.calc_reward()                                         # Actionの結果の報酬
         if abs(reward) == 1 : next_state = np.zeros([1, 16, 16, 7])             # 試合終了時は次の状態はない
-        
-        self.action2 = self.action
-        self.action = action
-        
-        # Count up if sequentially same action is chosen
-        if (self.action == self.action2).all():
-            self.same_action_count += 1
-            rospy.loginfo('Same goal is set for %d times (approved max %d times)' % (self.same_action_count, maxSameGoalCount))
-        else:
-            self.same_action_count = 0
 
-        if self.timer > 6:
-            # メモリの更新する
-            self.memory.add((self.state, action, reward, next_state))               # メモリの更新する
-            self.state  = next_state                                                # 状態更新
-        
+        if in_time_limit == True:
+            self.action2 = self.action
+            self.action = action
+
+            # Count up if sequentially same action is chosen
+            if (self.action == self.action2).all():
+                self.same_action_count += 1
+                rospy.loginfo('Same goal is set for %d times (approved max %d times)' % (self.same_action_count, maxSameGoalCount))
+            else:
+                self.same_action_count = 0
+
+            if self.timer > 6:
+                # メモリの更新する
+                self.memory.add((self.state, action, reward, next_state))               # メモリの更新する
+                self.state  = next_state                                                # 状態更新
+
         sys.stdout.flush()
         self.reward = reward
-        
+
         return Twist()
 
     # 学習は試合終了後に行う
@@ -497,7 +498,6 @@ class RandomBot():
         self.memory.reset()
         self.score  = np.zeros(20)
         self.timer  = 0
-        self.time   = 0.0
         self.reward = 0
         self.my_pos   = np.zeros([16, 16])     # My Location
         self.en_pos   = np.zeros([16, 16])     # En Location
@@ -597,9 +597,9 @@ class RandomBot():
             #self.vel_pub.publish(twist) # ROSに反映
             
             if self.sim_flag == True:
-                # 試合終了した場合
                 if self.my_color == 'r':
                     rospy.loginfo('me=%d enemy=%d reward=%d' % (self.score[0], self.score[1], self.reward))
+                    # 試合終了した場合
                     if abs(self.reward) == 1:
                         if   self.reward == 0 : rospy.loginfo('Draw')
                         elif self.reward == 1 : rospy.loginfo('Win!')
@@ -609,6 +609,7 @@ class RandomBot():
                             writer.writerow([self.score[0], self.score[1], time.time()])
                         if self.training == True:
                             # 試合終了時に学習を実行する
+                            rospy.loginfo('Train start')
                             self.train(epochs=10)
                             # モデルの保存
                             while True:
@@ -618,12 +619,15 @@ class RandomBot():
                                 except:
                                     rospy.logwarn('%s: save_weights error. Retry' % self.my_color)
                                     time.sleep(1)
-                        # 試合再開
                         self.reset()
-                        self.restart()
+                        self.restart() # 試合再開
                         r.sleep()
                 else:
-                    #if self.timer % turnEnd == 0 :
+                    # 試合終了した場合
+                    if abs(self.reward) == 1:
+                        self.reset()
+                        self.vel_pub.publish(Twist()) # 動きを止める
+                    # 試合再開した場合
                     if self.time < 10 :
                         if self.training == True:
                             # 前回の試合でredが学習した重みの読み込み
@@ -634,8 +638,6 @@ class RandomBot():
                                 except:
                                     rospy.logwarn('%s: load_weights error. Retry' % self.my_color)
                                     time.sleep(1)
-                        # 試合再開
-                        self.reset()
             
             r.sleep()
         
