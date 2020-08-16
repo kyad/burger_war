@@ -102,7 +102,7 @@ class QNetwork:
         prob_true, reward_true = self.model.predict(next_state_batch)   # (batch_size, 16, 16, 1), (batch_size, 1)
         reward_true = reward_batch + gamma * reward_true
         
-        loss = self.model.train_on_batch(x=state_batch, y=[prob_true, reward_true], return_dict=True)
+        loss = self.model.train_on_batch(x=state_batch, y=[prob_true, reward_true])
 
         return loss
 
