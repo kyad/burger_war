@@ -41,6 +41,7 @@ fieldScale = 2.4  # 競技場の広さ
 TimeLimit = 180
 #TimeLimit = 30
 realTimeFactor = 1
+maxGameCount = None  # sim_flag == Trueの場合、何試合繰返すか。Noneの場合は無限に繰返す
 maxGoalItrCount = 10  # Max number of iteration to determine goal. (STAY will be chosen if exceeded)
 maxSameGoalCount = 3  # Max number to approve same goal with previous one.
 marginFromObstacle = 0.6  # Margin to be kept from obstacle surface (unit: cell. Field width 2.4 meters is equal to 16 cells)
@@ -256,10 +257,11 @@ class RandomBot():
         self.en_pos   = np.zeros([16, 16])     # En Location
         self.my_color = color                                           # 自分の色情報
         self.en_color = 'b' if color=='r' else 'r'                      # 相手の色情報
-        self.score    = np.zeros(20)                                    # スコア情報(以下詳細)
+        self.game_count = 1                                             # 現在の試合が何試合目か(redのみ有効)
         self.model_file = model_file
         self.sim_flag = sim_flag
         self.training = training
+        self.score    = np.zeros(20)                                    # スコア情報(以下詳細)
          #  0:自分のスコア, 1:相手のスコア
          #  2:相手後ろ, 3:相手Ｌ, 4:相手Ｒ, 5:自分後ろ, 6:自分Ｌ, 7:自分Ｒ
          #  8:Tomato_N, 9:Tomato_S, 10:Omelette_N, 11:Omelette_S, 12:Pudding_N, 13:Pudding_S
@@ -598,15 +600,15 @@ class RandomBot():
             
             if self.sim_flag == True:
                 if self.my_color == 'r':
-                    rospy.loginfo('me=%d enemy=%d reward=%d' % (self.score[0], self.score[1], self.reward))
+                    rospy.loginfo('game_count=%d me=%d enemy=%d reward=%d' % (self.game_count, self.score[0], self.score[1], self.reward))
                     # 試合終了した場合
-                    if abs(self.reward) == 1:
+                    if ((maxGameCount is None) or (self.game_count <= maxGameCount)) and (abs(self.reward) == 1):
                         if   self.reward == 0 : rospy.loginfo('Draw')
                         elif self.reward == 1 : rospy.loginfo('Win!')
                         else                  : rospy.loginfo('Lose')
                         with open('result.csv', 'a') as f:
                             writer = csv.writer(f, lineterminator='\n')
-                            writer.writerow([self.score[0], self.score[1], time.time()])
+                            writer.writerow([self.game_count, time.time(), self.score[0], self.score[1]])
                         if self.training == True:
                             # 試合終了時に学習を実行する
                             rospy.loginfo('Train start')
@@ -619,8 +621,11 @@ class RandomBot():
                                 except:
                                     rospy.logwarn('%s: save_weights error. Retry' % self.my_color)
                                     time.sleep(1)
-                        self.reset()
-                        self.restart() # 試合再開
+                        if self.game_count != maxGameCount:
+                            rospy.loginfo('game_count %d end. Restart' % self.game_count)
+                            self.reset()
+                            self.restart() # 試合再開
+                        self.game_count += 1
                         r.sleep()
                 else:
                     # 試合終了した場合
