@@ -67,7 +67,7 @@ class QNetwork:
         self.debug_log = debug_log
 
         #self.model = create_unet()
-        self.model = resnet(input_shape=(16, 16, 7), num_layers=[3, 4, 3])
+        self.model = resnet(input_shape=(16, 16, 8), num_layers=[3, 4, 3])
 
         #self.optimizer = Adam(lr=learning_rate)  # 誤差を減らす学習方法はAdam
         #self.optimizer = Adam()
