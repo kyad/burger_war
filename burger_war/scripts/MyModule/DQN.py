@@ -253,6 +253,7 @@ class Actor:
         else:
             if bot_color == 'r' : print('Random')
             # 移動禁止箇所以外へランダムに行動する
-            action = self.generateRandomDestination()
+            #action = self.generateRandomDestination()
+            action = self.getIndexAtMaxN(retTargetQs, 2+int(np.random.rand()*9))
 
         return action, predicted
