@@ -94,14 +94,19 @@ class QNetwork:
 
         # それぞれのデータを結合する
         state_batch = np.concatenate(mini_batch.state)                          # (batch_size, 16, 16, 7)
-        #action_batch = np.concatenate(mini_batch.action).reshape(batch_size, 2)       # (batch_size, 2)
+        action_batch = np.concatenate(mini_batch.action).reshape(batch_size, 2)       # (batch_size, 2)
         reward_batch = np.array(mini_batch.reward).reshape(batch_size, 1)       # (batch_size, 1)
         next_state_batch = np.concatenate(mini_batch.next_state)  # (batch_size, 16, 16, 7)
 
         # 教師データの作成
-        prob_true, reward_true = self.model.predict(next_state_batch)   # (batch_size, 16, 16, 1), (batch_size, 1)
+        # reward
+        _, reward_true = self.model.predict(next_state_batch)   # _, (batch_size, 1)
         reward_true = reward_batch + gamma * reward_true
+        # probability
+        prob_true = np.zeros((batch_size, 16, 16, 1))
+        prob_true[np.arange(batch_size), action_batch[:, 0], action_batch[:, 1], 0] = 1.0   # one-hot
         
+        # バッチ学習
         loss = self.model.train_on_batch(x=state_batch, y=[prob_true, reward_true])
 
         return loss
