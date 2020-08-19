@@ -233,6 +233,7 @@ class RandomBot():
         en_sco      = get_sco_matrix(self.score, -1)                               # 相手の点数
         mySide_sco  = get_side_matrix(self.score[6], self.score[7], self.score[8]) # 自分側面と背面の点数
         enSide_sco  = get_side_matrix(self.score[3], self.score[4], self.score[5]) # 相手側面と背面の点数
+        time_state  = np.clip( np.zeros([16, 16]) + self.time/TimeLimit, 0, 1)     # Time
 
         # 状態と報酬の更新( 16 × 16 × 7ch )
         state       = np.concatenate([np.expand_dims(my_pos,     axis=2),
@@ -241,8 +242,9 @@ class RandomBot():
                                      np.expand_dims(my_sco,     axis=2),
                                      np.expand_dims(en_sco,     axis=2),
                                      np.expand_dims(mySide_sco, axis=2),
-                                     np.expand_dims(enSide_sco, axis=2)], axis=2)
-        state       = np.reshape(state, [1, 16, 16, 7])                         # 現在の状態(自分と相手の位置、点数)
+                                     np.expand_dims(enSide_sco, axis=2),
+                                     np.expand_dims(time_state, axis=2)], axis=2)
+        state       = np.reshape(state, [1, 16, 16, 8])                         # 現在の状態(自分と相手の位置、点数)
         
         return state
 
@@ -457,7 +459,7 @@ class RandomBot():
         # Action後の状態と報酬を取得
         next_state = self.getState()                                            # Action後の状態
         reward     = self.calc_reward()                                         # Actionの結果の報酬
-        if abs(reward) == 1 : next_state = np.zeros([1, 16, 16, 7])             # 試合終了時は次の状態はない
+        if abs(reward) == 1 : next_state = np.zeros([1, 16, 16, 8])             # 試合終了時は次の状態はない
 
         if in_time_limit == True:
             self.action2 = self.action
@@ -573,6 +575,7 @@ class RandomBot():
                     rospy.loginfo('No weight file found. Train from scratch')
             else                     :
                 self.mainQN.model.load_weights(self.model_file)     # 重みの読み込み
+
             #self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
 
