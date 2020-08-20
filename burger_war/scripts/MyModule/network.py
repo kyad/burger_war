@@ -118,23 +118,26 @@ def resnet(input_shape=(16, 16, 7), num_layers=[3, 4, 3]):
     
     block = BatchNormalization()(block)
     block = Activation('relu')(block)
+    output = mobileNet(filters=1, kernel_size=(3, 3))(block)  # (1, 16, 16)
+    output = BatchNormalization()(output)
+    output = Activation('tanh')(output)
 
-    # 行動予測部
-    out_prob = mobileNet(filters=1, kernel_size=(3, 3))(block)  # (1, 16, 16)
-    out_prob = BatchNormalization()(out_prob)
-    out_prob = Reshape((256,), input_shape=(16, 16, 1))(out_prob)
-    out_prob = Activation('softmax')(out_prob)
-    out_prob = Reshape((16, 16, 1), input_shape=(256,), name='prob_output')(out_prob)
+    # # 行動予測部
+    # out_prob = mobileNet(filters=1, kernel_size=(3, 3))(block)  # (1, 16, 16)
+    # out_prob = BatchNormalization()(out_prob)
+    # out_prob = Reshape((256,), input_shape=(16, 16, 1))(out_prob)
+    # out_prob = Activation('softmax')(out_prob)
+    # out_prob = Reshape((16, 16, 1), input_shape=(256,), name='prob_output')(out_prob)
 
-    # 勝敗予測部
-    out_reward = mobileNet(filters=1, kernel_size=(3, 3))(block)  # (1, 16, 16)
-    out_reward = BatchNormalization()(out_reward)
-    out_reward = Activation('relu')(out_reward)
-    out_reward = Flatten()(out_reward)  # (256)
-    out_reward = Dense(1, kernel_regularizer=l2(1.e-4))(out_reward) # (1)
-    out_reward = Activation('tanh', name='reward_output')(out_reward)
+    # # 勝敗予測部
+    # out_reward = mobileNet(filters=1, kernel_size=(3, 3))(block)  # (1, 16, 16)
+    # out_reward = BatchNormalization()(out_reward)
+    # out_reward = Activation('relu')(out_reward)
+    # out_reward = Flatten()(out_reward)  # (256)
+    # out_reward = Dense(1, kernel_regularizer=l2(1.e-4))(out_reward) # (1)
+    # out_reward = Activation('tanh', name='reward_output')(out_reward)
 
-    return Model(inputs=input, outputs=[out_prob, out_reward])
+    return Model(inputs=input, outputs=output)
 
 
 # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
