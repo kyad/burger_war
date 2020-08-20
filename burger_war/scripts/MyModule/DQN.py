@@ -104,6 +104,7 @@ class QNetwork:
         pred = self.model.predict(next_state_batch).max(1).max(1)                   # (batch_size, 1)
         next_state_values = pred.reshape(pred.shape[0])                             # (batch_size,)
         y_target = reward_batch.reshape(batch_size) + gamma * next_state_values     # (batch_size,)
+        y_target = np.clip(y_target, -1.0, 1.0)
         y_target = tf.convert_to_tensor(y_target, dtype=tf.float32)                 # (batch_size,)
         
         # actionのindexを作成
