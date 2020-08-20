@@ -12,18 +12,20 @@ from keras import backend as K
 #from keras.optimizers import Adam, SGD
 
 from network import resnet, create_unet
+import rospy
 
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
 # ４次元ベクトルの任意ch内容確認
-def print_state_At(state, index):
+def print_state_At(state, index_batch, index):
     tmp = ''
     for i in range(16):
         for j in range(16):
-            if state[0][i][j][index] < 0 : tmp += str('%5.3f' % state[0][i][j][index])+' '
-            else                         : tmp += str('%6.3f' % state[0][i][j][index])+' '
+            if state[index_batch][i][j][index] < 0 : tmp += str('%5.3f' % state[index_batch][i][j][index])+' '
+            else                         : tmp += str('%6.3f' % state[index_batch][i][j][index])+' '
         if i < 15 : tmp += '\n'
-    print(tmp)
+    rospy.loginfo('Batch(%d/%d):' % (index_batch + 1, state.shape[0]))
+    #rospy.loginfo(tmp)
 
 
 # 次の行動を決める
@@ -236,7 +238,7 @@ class Actor:
         #ban = np.array( [ [4,8], [7,8], [7,7], [8,12], [8,9], [8,8], [8,7], [8,4], [9,9], [9,8], [12,8]  ] )
 
         retTargetQs = mainQN.model.predict(state)             # (1, 16, 16, 1), (1, 1)
-        #if bot_color == 'r' : print_state_At(retTargetQs, 0)  # 予測結果を表示
+        #if bot_color == 'r' : print_state_At(retTargetQs, 0, 0)  # 予測結果を表示
         #retTargetQs = mainQN.model.predict(state)[0]          # (16, 16, 1)
         retTargetQs = retTargetQs[0]                          # (16, 16, 1)
         retTargetQs = np.reshape(retTargetQs, (16, 16))       # (16, 16)
