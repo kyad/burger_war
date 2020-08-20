@@ -9,7 +9,7 @@ import numpy as np
 from collections import deque, namedtuple
 import tensorflow as tf
 from keras import backend as K
-from keras.optimizers import Adam, SGD
+#from keras.optimizers import Adam, SGD
 
 from network import resnet, create_unet
 
@@ -50,15 +50,15 @@ def huberloss(y_true, y_pred):
     loss = tf.where(cond, L2, L1)  # Keras does not cover where function in tensorflow :-(
     return K.mean(loss)
 
-def prob_loss(y_true, y_pred):
-    y_t = y_true
-    y_p = y_pred
-    return - K.mean(K.sum(y_t * K.log(y_p), axis=[1, 2, 3]))
+# def prob_loss(y_true, y_pred):
+#     y_t = y_true
+#     y_p = y_pred
+#     return - K.mean(K.sum(y_t * K.log(y_p), axis=[1, 2, 3]))
 
-def reward_loss(y_true, y_pred):
-    y_t = y_true
-    y_p = y_pred
-    return K.mean(K.square(y_t - y_p))
+# def reward_loss(y_true, y_pred):
+#     y_t = y_true
+#     y_p = y_pred
+#     return K.mean(K.square(y_t - y_p))
 
 
 # [2]Q関数をディープラーニングのネットワークをクラスとして定義
@@ -73,10 +73,10 @@ class QNetwork:
         #self.optimizer = Adam()
 
         #self.optimizer = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-        self.optimizer = SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True)
+        self.optimizer = tf.optimizers.SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True)
 
         #self.model.compile(loss=huberloss, optimizer=self.optimizer)
-        self.model.compile(loss=[prob_loss, reward_loss], optimizer=self.optimizer, loss_weights=[1.0, 1.0])
+        #self.model.compile(loss=[prob_loss, reward_loss], optimizer=self.optimizer, loss_weights=[1.0, 1.0])
 
         if self.debug_log == True:
             self.model.summary()
@@ -93,21 +93,35 @@ class QNetwork:
         mini_batch = memory.sample(batch_size)
 
         # それぞれのデータを結合する
-        state_batch = np.concatenate(mini_batch.state)                          # (batch_size, 16, 16, 7)
+        state_batch = np.concatenate(mini_batch.state)                          # (batch_size, 16, 16, 8)
         action_batch = np.concatenate(mini_batch.action).reshape(batch_size, 2)       # (batch_size, 2)
         reward_batch = np.array(mini_batch.reward).reshape(batch_size, 1)       # (batch_size, 1)
-        next_state_batch = np.concatenate(mini_batch.next_state)  # (batch_size, 16, 16, 7)
+        next_state_batch = np.concatenate(mini_batch.next_state)  # (batch_size, 16, 16, 8)
 
         # 教師データの作成
-        # reward
-        _, reward_true = self.model.predict(next_state_batch)   # _, (batch_size, 1)
-        reward_true = reward_batch + gamma * reward_true
-        # probability
-        prob_true = np.zeros((batch_size, 16, 16, 1))
-        prob_true[np.arange(batch_size), action_batch[:, 0], action_batch[:, 1], 0] = 1.0   # one-hot
+        pred = self.model.predict(next_state_batch).max(1).max(1)                   # (batch_size, 1)
+        next_state_values = pred.reshape(pred.shape[0])                             # (batch_size,)
+        y_target = reward_batch.reshape(batch_size) + gamma * next_state_values     # (batch_size,)
+        y_target = tf.convert_to_tensor(y_target, dtype=tf.float32)                 # (batch_size,)
         
+        # actionのindexを作成
+        zero_idx = np.zeros((batch_size, 1)).astype('int32')                        # (batch_size, 1)
+        arange_idx = np.arange(batch_size).reshape(batch_size, 1).astype('int32')   # (batch_size, 1)
+        action_batch_idx = np.concatenate([arange_idx, action_batch, zero_idx], 1)  # (batch_size, 1) + (batch_size, 2) + (batch_size, 1) -> (batch_size, 4)
+        action_batch_idx = tf.convert_to_tensor(action_batch_idx, dtype=tf.int32)   # (batch_size, 4), (batch_id, action_x, action_y, 0)がbatch_size分
+
         # バッチ学習
-        loss = self.model.train_on_batch(x=state_batch, y=[prob_true, reward_true])
+        #loss = self.model.train_on_batch(x=state_batch, y=[prob_true, reward_true])
+
+        # GradientTapeでy_predとlossを定義し、学習を実行する
+        with tf.GradientTape() as tape:
+            y_pred = self.model(state_batch.astype(np.float32)) # (batch_size, 16, 16, 1)
+            y_pred = tf.gather_nd(y_pred, action_batch_idx)     # (batch_size,)
+            loss = huberloss(y_target, y_pred)
+
+        variables = self.model.trainable_variables
+        gradients = tape.gradient(loss, variables)
+        self.optimizer.apply_gradients(zip(gradients, variables))
 
         return loss
 
@@ -221,16 +235,17 @@ class Actor:
         # 移動禁止箇所
         #ban = np.array( [ [4,8], [7,8], [7,7], [8,12], [8,9], [8,8], [8,7], [8,4], [9,9], [9,8], [12,8]  ] )
 
+        retTargetQs = mainQN.model.predict(state)             # (1, 16, 16, 1), (1, 1)
+        #if bot_color == 'r' : print_state_At(retTargetQs, 0)  # 予測結果を表示
+        #retTargetQs = mainQN.model.predict(state)[0]          # (16, 16, 1)
+        retTargetQs = retTargetQs[0]                          # (16, 16, 1)
+        retTargetQs = np.reshape(retTargetQs, (16, 16))       # (16, 16)
+
         predicted = False  # True if predicted by network, otherwise random selection
         if epsilon <= np.random.uniform(0, 1) and not force_random_action:
             #if bot_color == 'r' : print('Learned')
             predicted = True
 
-            retTargetQs, reward = mainQN.model.predict(state)             # (1, 16, 16, 1), (1, 1)
-            #if bot_color == 'r' : print_state_At(retTargetQs, 0)  # 予測結果を表示
-            #retTargetQs = mainQN.model.predict(state)[0]          # (16, 16, 1)
-            retTargetQs = retTargetQs[0]                          # (16, 16, 1)
-            retTargetQs = np.reshape(retTargetQs, (16, 16))       # (16, 16)
             action      = np.unravel_index(np.argmax(retTargetQs), retTargetQs.shape)
             action      = np.array(action)
 

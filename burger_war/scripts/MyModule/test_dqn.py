@@ -15,7 +15,7 @@ if __name__ == "__main__":
         
         print('episode {}'.format(episode))
         
-        state = np.random.rand(16*16*7).reshape(1, 16, 16, 7)
+        state = np.random.rand(16*16*8).reshape(1, 16, 16, 8)
         #action1 = [7, 7]
         #action2 = [8, 8]
 
@@ -25,10 +25,10 @@ if __name__ == "__main__":
             action = np.array([0,0])
 
             if step == NUM_STEP - 1:
-                next_state = np.zeros((1,16,16,7))
+                next_state = np.zeros((1,16,16,8))
                 reward = 1.0
             else:
-                next_state = np.random.rand(16*16*7).reshape(1, 16, 16, 7)
+                next_state = np.random.rand(16*16*8).reshape(1, 16, 16, 8)
                 reward = 0.0
 
             memory.add((state, action, reward, next_state))

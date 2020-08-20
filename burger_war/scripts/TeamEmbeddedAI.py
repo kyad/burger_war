@@ -30,8 +30,8 @@ import rosparam
 # 強化学習DQN (Deep Q Network)
 from MyModule import DQN
 
-import tensorflow
-graph = tensorflow.get_default_graph()
+# import tensorflow
+# graph = tensorflow.get_default_graph()
 
 timeScale  = 1    # １秒間で何回座標計算するか？
 #timeScale  = 4    # １秒間で何回座標計算するか？ 
@@ -560,23 +560,23 @@ class RandomBot():
     # _/ スタート時に時間が掛かるので、別スレッドを立ててModel読み込みを行う
     # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
     def Read_DNN_Model(self, learning_rate, memory_size):
-        global graph
-        with graph.as_default():
-            self.mainQN   = DQN.QNetwork(learning_rate=learning_rate)   # メインのQネットワーク
-            #self.targetQN = DQN.QNetwork(learning_rate=learning_rate)   # 価値を計算するQネットワーク
-            self.memory   = DQN.Memory(max_size=memory_size)
-            self.actor    = DQN.Actor()
-        
-            # 重みの読み込み
-            if self.training == True:
-                try:
-                    self.mainQN.model.load_weights(self.model_file)     # 重みの読み込み
-                except:
-                    rospy.loginfo('No weight file found. Train from scratch')
-            else                     :
+        # global graph
+        # with graph.as_default():
+        self.mainQN   = DQN.QNetwork(learning_rate=learning_rate, debug_log=False)   # メインのQネットワーク
+        #self.targetQN = DQN.QNetwork(learning_rate=learning_rate)   # 価値を計算するQネットワーク
+        self.memory   = DQN.Memory(max_size=memory_size)
+        self.actor    = DQN.Actor()
+    
+        # 重みの読み込み
+        if self.training == True:
+            try:
                 self.mainQN.model.load_weights(self.model_file)     # 重みの読み込み
+            except:
+                rospy.loginfo('No weight file found. Train from scratch')
+        else                     :
+            self.mainQN.model.load_weights(self.model_file)     # 重みの読み込み
 
-            #self.targetQN.model.set_weights(self.mainQN.model.get_weights())
+        #self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
 
     # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
@@ -589,7 +589,7 @@ class RandomBot():
         
         # Qネットワークとメモリ、Actorの生成--------------------------------------------------------
         learning_rate = 0.0005          # Q-networkの学習係数
-        memory_size   = 1000             # バッファーメモリの大きさ
+        memory_size   = 400             # バッファーメモリの大きさ
         #self.Read_DNN_Model(learning_rate, memory_size)
         self.flag_ThreadEnd = False
         self.thread = threading.Thread(target=self.Read_DNN_Model, args=([learning_rate, memory_size]), name='Read_DNN_Model_Thread')
