@@ -279,4 +279,4 @@ class Actor:
             #action = self.generateRandomDestination()
             action = self.getIndexAtMaxN(retTargetQs, 2+int(np.random.rand()*9))
 
-        return action, predicted
+        return action, predicted, retTargetQs

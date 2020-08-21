@@ -15,6 +15,7 @@ import sys
 import datetime
 import threading
 import time
+import math
 
 from std_msgs.msg import String
 from gazebo_msgs.msg import ModelStates
@@ -22,7 +23,7 @@ from geometry_msgs.msg import Twist, Vector3, Quaternion, PoseWithCovarianceStam
 from sensor_msgs.msg import Image
 import actionlib # RESPECT @seigot
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal # RESPECT @seigot
-from nav_msgs.msg import Path
+from nav_msgs.msg import Path, OccupancyGrid
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 import rosparam
@@ -316,6 +317,10 @@ class RandomBot():
         self.is_valid_plan = False
         rospy.Subscriber("move_base/DWAPlannerROS/global_plan", Path, self.callback_global_plan, queue_size=2)
 
+        # Publish Q table as costmap for debug
+        self.q_table_pub  = rospy.Publisher('q_table', OccupancyGrid, queue_size=10)
+
+
     # スコア情報の更新(war_stateのコールバック関数)
     def callback_war_state(self, data):
         json_dict = json.loads(data.data)                  # json辞書型に変換
@@ -380,6 +385,36 @@ class RandomBot():
         self.debug_gazebo_enemy_x = gazebo_enemy_x
         self.debug_gazebo_enemy_y = gazebo_enemy_y
 
+
+    # Publish Q table as costmap
+    def publish_Q_table(self, table):
+        costmap = OccupancyGrid()
+        costmap.header.stamp = rospy.Time.now()
+        costmap.header.frame_id = '/map'
+
+        costmap.info.width = 16
+        costmap.info.height = 16
+        costmap.info.resolution = fieldScale / 16
+        costmap.info.origin.position.x = fieldScale / math.sqrt(2)
+        costmap.info.origin.position.y = 0
+        costmap.info.origin.position.z = 0.01
+        q = tf.transformations.quaternion_from_euler(math.pi / 4, 0, 0)
+        #q = tf.transformations.quaternion_from_euler(0, 0, 0)
+        costmap.info.origin.orientation.x = q[1]
+        costmap.info.origin.orientation.y = q[2]
+        costmap.info.origin.orientation.z = q[3]
+        costmap.info.origin.orientation.w = q[0]
+
+        # Scale Q table
+        q_min = np.min(table)
+        q_max = np.max(table)
+        data = np.flipud(table).reshape(-1)
+        costmap.data = (data - q_min) / (q_max - q_min) * 100.0   # Should be integer between 0 and 100
+        #costmap.data = data * 50.0 + 50.0
+        costmap.data = np.array(costmap.data, dtype='int8')
+        rospy.loginfo('Q(min,max)=(%.3f, %.3f)' % (q_min, q_max))
+        self.q_table_pub.publish(costmap)
+
     # 報酬の計算
     def calc_reward(self):
         reward = 0
@@ -419,10 +454,13 @@ class RandomBot():
                     if not self.flag_ThreadEnd :
                         self.thread.join()
                         self.flag_ThreadEnd = True
-                    action, predicted = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.training, force_random_action, avoid_best_action)
+                    action, predicted, retQ = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.training, force_random_action, avoid_best_action)
                     # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
                     desti   = get_destination(action)
                     yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
+
+                    # Publish Q table as costmap
+                    self.publish_Q_table(retQ)
                 else:
                     action = np.array([ 0,  0])
                     if self.timer <= 2 :
