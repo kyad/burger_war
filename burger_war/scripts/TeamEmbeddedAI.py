@@ -542,7 +542,7 @@ class RandomBot():
 
         # Wait 1 second to check path planner topic subscription. Need to be set flag false before wait
         self.is_valid_plan = False
-        self.client.wait_for_result(rospy.Duration(1))
+        self.client.wait_for_result(rospy.Duration(3))
         if not self.is_valid_plan and not force_wait:
             # No new amcl_pose message received, which means planned path is invalid.
             self.client.cancel_goal()
