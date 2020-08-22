@@ -36,6 +36,13 @@
         <arg name="name_space" value="enemy_bot" />
       </include>  
     </group>
+
+    <!-- @seigot's teams -->
+    <group if="$(eval enemy_level==4)"> 
+      <include file="$(find burger_war_enemy)/launch/your_burger.launch">
+        <arg name="robot_namespace" value="enemy_bot" /> <!-- "" or "enemy_bot" to change ns-->
+      </include>  
+    </group>
   </group>
 
 </launch>
