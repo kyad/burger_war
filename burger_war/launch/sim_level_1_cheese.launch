@@ -2,7 +2,7 @@
 <launch>
     <!-- Arguments -->
     <arg name="name_space" default=""/>
-    <arg name="output" default="log"/>
+    <arg name="output" default="screen"/>
 
     <include file="$(find burger_navigation)/launch/burger_navigation.launch">
     </include>

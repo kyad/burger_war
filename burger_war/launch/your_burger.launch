@@ -10,7 +10,7 @@
     <include file="$(find burger_navigation)/launch/burger_navigation.launch">
     </include>
 
-    <node pkg="burger_war" type="navirun.py" name="randomRun" output="screen"/>
+    <node pkg="burger_war" type="navirun.py" name="randomRun" output="log"/>
 
     <!-- END sample program node -->
 
