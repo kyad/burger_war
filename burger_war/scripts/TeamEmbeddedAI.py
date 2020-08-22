@@ -13,6 +13,7 @@ import subprocess
 import numpy as np
 import sys
 import datetime
+import shutil
 import threading
 import time
 import math
@@ -662,6 +663,8 @@ class RandomBot():
                                 except:
                                     rospy.logwarn('%s: save_weights error. Retry' % self.my_color)
                                     time.sleep(1)
+                            # モデルの保存(バックアップ用)
+                            shutil.copyfile(self.model_file, self.model_file + '.' + str(self.game_count))
                         if self.game_count != maxGameCount:
                             rospy.loginfo('game_count %d end. Restart' % self.game_count)
                             self.reset()
