@@ -4,6 +4,7 @@ import rospy
 import random
 
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseWithCovarianceStamped
 
 import tf
 
@@ -26,7 +27,12 @@ class NaviBot():
         # velocity publisher
         self.vel_pub = rospy.Publisher('cmd_vel', Twist,queue_size=1)
         self.client = actionlib.SimpleActionClient('move_base',MoveBaseAction)
+        self.pose_sub = rospy.Subscriber('amcl_pose', PoseWithCovarianceStamped, self.poseCallback)
 
+    def poseCallback(self, data):
+        pose_x = data.pose.pose.position.x
+        pose_y = data.pose.pose.position.y
+        print("POSE pose_x: {}, pose_y: {}".format(pose_x, pose_y))
 
 
 
