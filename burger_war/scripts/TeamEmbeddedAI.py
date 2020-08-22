@@ -410,9 +410,10 @@ class RandomBot():
         q_min = np.min(table)
         q_max = np.max(table)
         data = np.flipud(table).reshape(-1)
-        costmap.data = (data - q_min) / (q_max - q_min) * 100.0   # Should be integer between 0 and 100
+        costmap.data = (data - q_min) / (q_max - q_min) * 99.0 + 1.5   # 0(transparent), 1(blue) to 98(red), 99(cyan), 100(pink)
         #costmap.data = data * 50.0 + 50.0
         costmap.data = np.array(costmap.data, dtype='int8')
+        # costmap.data = np.arange(256, dtype='int8')  # debug code to check which value corresponds to which color
         rospy.loginfo('Q(min,max)=(%.3f, %.3f)' % (q_min, q_max))
         self.q_table_pub.publish(costmap)
 
