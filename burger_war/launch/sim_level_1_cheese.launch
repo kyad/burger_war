@@ -4,6 +4,8 @@
     <arg name="name_space" default=""/>
     <arg name="output" default="log"/>
 
-    <node pkg="burger_war" type="level_1_cheese.py" name="cheeseRun" output="$(arg output)"/>
+    <include file="$(find burger_navigation)/launch/burger_navigation.launch">
+    </include>
+    <node pkg="burger_war" type="navirun.py" name="cheeseRun" output="$(arg output)"/>
 </launch>
 
