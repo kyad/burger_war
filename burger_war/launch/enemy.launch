@@ -7,9 +7,11 @@
     <arg name="output" default="screen"/>
 
     <include file="$(find burger_navigation)/launch/burger_navigation.launch">
+      <arg name="robot_namespace" default="$(arg name_space)"/>  <!-- RESPECT @seigot -->
     </include>
 
     <node pkg="burger_war" type="TeamEmbeddedAI.py" name="enemyRun" output="$(arg output)">
+      <param name="robot_namespace" value="$(arg name_space)" />  <!-- RESPECT @seigot -->
       <param name="rside" value="$(arg side)" />
       <param name="model_file" value="../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5"/>
       <param name="sim_flag" value="False"/>
