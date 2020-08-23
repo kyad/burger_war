@@ -251,7 +251,7 @@ class RandomBot():
         return state
 
     # クラス生成時に最初に呼ばれる
-    def __init__(self, bot_name, color='r', model_file='../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5', robot_namespace='', sim_flag=False, training=False):
+    def __init__(self, bot_name, color='r', model_file='../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5', sim_flag=False, training=False):
         self.name     = bot_name                                        # bot name 
         self.vel_pub  = rospy.Publisher('cmd_vel', Twist, queue_size=1) # velocity publisher
         self.timer    = 0                                               # 対戦時間
@@ -263,7 +263,6 @@ class RandomBot():
         self.en_color = 'b' if color=='r' else 'r'                      # 相手の色情報
         self.game_count = 1                                             # 現在の試合が何試合目か(redのみ有効)
         self.model_file = model_file
-        self.robot_namespace = robot_namespace
         self.sim_flag = sim_flag
         self.training = training
         self.score    = np.zeros(20)                                    # スコア情報(以下詳細)
@@ -392,7 +391,7 @@ class RandomBot():
     def publish_Q_table(self, table):
         costmap = OccupancyGrid()
         costmap.header.stamp = rospy.Time.now()
-        costmap.header.frame_id = self.robot_namespace + '/map'  # RESPECT @seigot
+        costmap.header.frame_id = '/map'
 
         costmap.info.width = 16
         costmap.info.height = 16 + 1    # Last one line is for extra information
@@ -572,7 +571,7 @@ class RandomBot():
 
         goal = MoveBaseGoal()
         name = 'red_bot' if self.my_color == 'r' else 'blue_bot'
-        goal.target_pose.header.frame_id = self.robot_namespace + "/map"  # RESPECT @seigot
+        goal.target_pose.header.frame_id = "map"
 
         goal.target_pose.header.stamp = rospy.Time.now()
         goal.target_pose.pose.position.x = x
@@ -802,14 +801,6 @@ class RandomBot():
             cv2.waitKey(1)
 
 if __name__ == '__main__':
-    try:
-        robot_namespace = rosparam.get_param('randomRun/robot_namespace')
-    except:
-        try:
-            robot_namespace = rosparam.get_param('enemyRun/robot_namespace')
-        except:
-            robot_namespace = ''
-
     # ロボットの色。r(red)は学習側、b(blue)は学習の相手側
     try:
         rside = rosparam.get_param('enemyRun/rside')
@@ -851,7 +842,7 @@ if __name__ == '__main__':
 
 
     rospy.init_node('IntegAI_run')    # 初期化宣言 : このソフトウェアは"IntegAI_run"という名前
-    rospy.loginfo('**************** robot_namespace=%s rside=%s model_file=%s sim_flag=%s training=%s' % (robot_namespace, rside, model_file, sim_flag, training))
-    bot = RandomBot('Team Integ AI', color=rside, model_file=model_file, robot_namespace=robot_namespace, sim_flag=sim_flag, training=training)
+    rospy.loginfo('**************** rside=%s model_file=%s sim_flag=%s training=%s' % (rside, model_file, sim_flag, training))
+    bot = RandomBot('Team Integ AI', color=rside, model_file=model_file, sim_flag=sim_flag, training=training)
 
     bot.strategy()
