@@ -804,9 +804,12 @@ class RandomBot():
 if __name__ == '__main__':
     # ロボットの色。r(red)は学習側、b(blue)は学習の相手側
     try:
-        rside = rosparam.get_param('enemyRun/rside')
+        rside = rosparam.get_param('randomRun/rside')
     except:
-        rside = 'r'
+        try:
+            rside = rosparam.get_param('enemyRun/rside')
+        except:
+            rside = 'r'
 
     try:
         model_file = rosparam.get_param('randomRun/model_file')
