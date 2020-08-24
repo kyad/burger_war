@@ -55,16 +55,17 @@ def quaternion_to_euler(quaternion):
 
 
 # 座標回転行列を返す
-def get_rotation_matrix(rad):
+def get_rotation_matrix(rad, color='r'):
+    if color == 'b' : rad += np.pi
     rot = np.array([[np.cos(rad), -np.sin(rad)], [np.sin(rad), np.cos(rad)]])
     return rot
 
 
 # 現在地を２次元ベクトル(n*n)にして返す
-def get_pos_matrix(x, y, n=16):
+def get_pos_matrix(x, y, color='r', n=16):
     #my_pos  = np.array([self.pos[0], self.pos[1]])           # 現在地点
     pos     = np.array([x, y])                                # 現在地点
-    rot     = get_rotation_matrix(-45 * np.pi / 180)          # 45度回転行列の定義
+    rot     = get_rotation_matrix(-45 * np.pi / 180, color)          # 45度回転行列の定義
     rotated = np.dot(rot, pos) / fieldScale + 0.5         # 45度回転して最大幅1.5で正規化(0-1)
     #rotated = ( np.dot(rot, pos) + 1 ) / 2                    # 回転を行って0-1の範囲にシフト
     pos_np  = np.zeros([n, n])
@@ -80,7 +81,7 @@ def get_pos_matrix(x, y, n=16):
 
 
 # 移動先の座標
-def get_destination(action, n=16):
+def get_destination(action, color='r', n=16):
     # Create table for remapping the specified unreachable action to new reachable one.
     # Note that only one side is defined (x < y) as world is symmetric.
     dest_table = [
@@ -131,7 +132,7 @@ def get_destination(action, n=16):
 
     pos   = action_f/n + 1.0/(2*n)
     pos   = (pos-1.0/2)*fieldScale
-    rot   = get_rotation_matrix(45 * np.pi / 180)             # 45度回転行列の定義
+    rot   = get_rotation_matrix(45 * np.pi / 180, color)             # 45度回転行列の定義
     return np.dot(rot, pos)                                   # 45度回転
 
 
@@ -220,11 +221,11 @@ class RandomBot():
         # 位置情報
         my_angle = quaternion_to_euler(Quaternion(self.pos[2], self.pos[3], self.pos[4], self.pos[5]))
         #my_pos = get_pos_matrix(self.pos[0], self.pos[1])                      # 自分の位置
-        self.my_pos = get_pos_matrix(self.pos[0], self.pos[1]) + 0.5*self.my_pos  # 自分の位置(軌跡対応)
+        self.my_pos = get_pos_matrix(self.pos[0], self.pos[1], self.my_color) + 0.5*self.my_pos  # 自分の位置(軌跡対応)
         self.my_pos = np.clip(self.my_pos, 0, 1)                                  # 自分の位置(軌跡対応)
         my_pos = self.my_pos                                                      # 自分の位置(軌跡対応)
         #en_pos = get_pos_matrix(self.pos[6], self.pos[7])  # 相手の位置
-        self.en_pos = get_pos_matrix(self.pos[6], self.pos[7]) + 0.5*self.en_pos # 相手の位置(軌跡対応)
+        self.en_pos = get_pos_matrix(self.pos[6], self.pos[7], self.my_color) + 0.5*self.en_pos # 相手の位置(軌跡対応)
         self.en_pos = np.clip(self.en_pos, 0, 1)                                 # 相手の位置(軌跡対応)
         en_pos = self.en_pos                                                     # 相手の位置(軌跡対応)
         my_ang = get_ang_matrix(my_angle.z)                                    # 自分の向き
@@ -466,7 +467,7 @@ class RandomBot():
                         self.flag_ThreadEnd = True
                     action, predicted, retQ = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.training, force_random_action, avoid_best_action)
                     # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
-                    desti   = get_destination(action)
+                    desti   = get_destination(action, self.my_color)
                     yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
 
                     # Publish Q table as costmap
