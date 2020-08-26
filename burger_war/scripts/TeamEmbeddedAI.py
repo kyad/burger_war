@@ -258,8 +258,8 @@ class RandomBot():
         self.timer    = 0                                               # 対戦時間
         self.time     = 0.0                                             # 対戦時間(審判から取得)
         self.reward   = 0                                               # 報酬
-        self.my_pos   = np.zeros([16, 16])     # My Location
-        self.en_pos   = np.zeros([16, 16])     # En Location
+        self.my_pos   = np.zeros([16, 16])     # My Location 自機がredでもblueでも、red座標系で見た、2次元ベクトルで表される座標
+        self.en_pos   = np.zeros([16, 16])     # En Location 自機がredでもblueでも、red座標系で見た、2次元ベクトルで表される座標
         self.my_color = color                                           # 自分の色情報
         self.en_color = 'b' if color=='r' else 'r'                      # 相手の色情報
         self.game_count = 1                                             # 現在の試合が何試合目か(redのみ有効)
@@ -273,6 +273,7 @@ class RandomBot():
          #  8:Tomato_N, 9:Tomato_S, 10:Omelette_N, 11:Omelette_S, 12:Pudding_N, 13:Pudding_S
          # 14:OctopusWiener_N, 15:OctopusWiener_S, 16:FriedShrimp_N, 17:FriedShrimp_E, 18:FriedShrimp_W, 19:FriedShrimp_S
         self.pos      = np.zeros(12)                                    # 位置情報(以下詳細)
+         #  自機がredならred座標系で見た、自機がblueならはblue座標系で見た、自機位置・敵機位置
          #  0:自分位置_x,  1:自分位置_y,  2:自分角度_x,  3:自分角度_y,  4:自分角度_z,  5:自分角度_w
          #  6:相手位置_x,  7:相手位置_y,  8:相手角度_x,  9:相手角度_y, 10:相手角度_z, 11:相手角度_w
         self.w_name = "imageview-" + self.my_color
@@ -466,9 +467,10 @@ class RandomBot():
                     if not self.flag_ThreadEnd :
                         self.thread.join()
                         self.flag_ThreadEnd = True
+                    # actionは、自機がredでもblueでも、red座標系で見た、2次元ベクトルで表される座標
                     action, predicted, retQ = self.actor.get_action(self.state, self.timer, self.mainQN, self.my_color, self.action, self.action2, self.score[0]-self.score[1], self.training, force_random_action, avoid_best_action)
                     # 移動先と角度  (中心位置をずらした後に45度反時計周りに回転)
-                    desti   = get_destination(action, self.my_color)
+                    desti   = get_destination(action, self.my_color)  # 自機がredならred座標系で見た、自機がblueならblue座標系で見た、目的地の座標
                     yaw = np.arctan2( (desti[1]-self.pos[1]), (desti[0]-self.pos[0]) )      # 移動先の角度
 
                     # Publish Q table as costmap
