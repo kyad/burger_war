@@ -874,12 +874,7 @@ if __name__ == '__main__':
             bn_train_mode = False
 
     rospy.init_node('IntegAI_run')    # 初期化宣言 : このソフトウェアは"IntegAI_run"という名前
-<<<<<<< HEAD
-    rospy.loginfo('**************** rside=%s model_file=%s sim_flag=%s training=%s bn_train_mode=%s' % (rside, model_file, sim_flag, training, bn_train_mode))
-    bot = RandomBot('Team Integ AI', color=rside, model_file=model_file, sim_flag=sim_flag, training=training, bn_train_mode=bn_train_mode)
-=======
-    rospy.loginfo('**************** robot_namespace=%s rside=%s model_file=%s sim_flag=%s training=%s' % (robot_namespace, rside, model_file, sim_flag, training))
-    bot = RandomBot('Team Integ AI', color=rside, model_file=model_file, robot_namespace=robot_namespace, sim_flag=sim_flag, training=training)
->>>>>>> 4a92793d8a72b338aa8f33d28cc85fbd1145a76d
+    rospy.loginfo('**************** robot_namespace=%s rside=%s model_file=%s sim_flag=%s training=%s, bn_train_mode=%s' % (robot_namespace, rside, model_file, sim_flag, training, bn_train_mode))
+    bot = RandomBot('Team Integ AI', color=rside, model_file=model_file, robot_namespace=robot_namespace, sim_flag=sim_flag, training=training, bn_train_mode=bn_train_mode)
 
     bot.strategy()
