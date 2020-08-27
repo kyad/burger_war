@@ -90,7 +90,7 @@ class QNetwork:
 
         if len(memory) < batch_size:    # memoryにbatch_size以上のデータが保存されているか確認
             print("memory size = {} is smaller than batch size = {}.".format(len(memory), batch_size))
-            batch_size = len(memory)
+            return
 
         mini_batch = memory.sample(batch_size)
 

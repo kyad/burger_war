@@ -534,7 +534,7 @@ class RandomBot():
             if self.timer > 6:
                 # メモリの更新する
                 self.memory.add((self.state, action, reward, next_state))               # メモリの更新する
-                self.state  = next_state                                                # 状態更新
+                if abs(reward) != 1:  self.state = next_state                                                # 状態更新
 
         sys.stdout.flush()
         self.reward = reward
