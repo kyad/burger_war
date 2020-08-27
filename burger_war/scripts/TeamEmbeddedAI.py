@@ -46,7 +46,7 @@ realTimeFactor = 1
 maxGameCount = None  # sim_flag == Trueの場合、何試合繰返すか。Noneの場合は無限に繰返す
 maxGoalItrCount = 10  # Max number of iteration to determine goal. (STAY will be chosen if exceeded)
 maxSameGoalCount = 3  # Max number to approve same goal with previous one.
-marginFromObstacle = 0.6  # Margin to be kept from obstacle surface (unit: cell. Field width 2.4 meters is equal to 16 cells)
+marginFromObstacle = 1.0  # Margin to be kept from obstacle surface (unit: cell. Field width 2.4 meters is equal to 16 cells)
 
 # クォータニオンからオイラー角への変換
 def quaternion_to_euler(quaternion):
@@ -109,14 +109,19 @@ def get_destination(action, color='r', n=16):
         [ [7,7], [7.0 - marginFromObstacle - 0.5, 7.0 - marginFromObstacle - 0.5] ],  # This cell is dedicated for loss function and not available. But implemented just in case.
         [ [7,8], [7.0 - marginFromObstacle - 0.5, 8.0 + marginFromObstacle + 0.5] ],
         [ [8,8], [8.0 - marginFromObstacle + 0.5, 8.0 - marginFromObstacle + 0.5] ],  # This cell is dedicated for loss function and not available. But implemented just in case.
+     
+        # Corner
+        [ [0,0], [marginFromObstacle, marginFromObstacle] ],
+        [ [0,15], [marginFromObstacle, 15.0 - marginFromObstacle] ],
+        [ [15,15], [15.0 - marginFromObstacle, 15.0 - marginFromObstacle] ],
     ]
     # Wall1
     dest_table.extend([
-        [[0, i], [marginFromObstacle, float(i)]] for i in range(16)
+        [[0, i], [marginFromObstacle, float(i)]] for i in range(1,15)
         ])
     # Wall2
     dest_table.extend([
-        [[i, 15], [float(i), 15.0 - marginFromObstacle]] for i in range(16)
+        [[i, 15], [float(i), 15.0 - marginFromObstacle]] for i in range(1,15)
         ])
 
     # Remap unreachable action
