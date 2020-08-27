@@ -84,7 +84,7 @@ class QNetwork:
             self.model.summary()
 
     # 重みの学習
-    def replay(self, memory, batch_size, gamma):
+    def replay(self, memory, batch_size, gamma, bn_train_mode=True):
         #inputs  = np.zeros((batch_size, 16, 16, 7))
         #targets = np.zeros((batch_size, 16, 16, 1))
 
@@ -98,11 +98,15 @@ class QNetwork:
         state_batch = np.concatenate(mini_batch.state)                          # (batch_size, 16, 16, 8)
         action_batch = np.concatenate(mini_batch.action).reshape(batch_size, 2)       # (batch_size, 2)
         reward_batch = np.array(mini_batch.reward).reshape(batch_size, 1)       # (batch_size, 1)
-        next_state_batch = np.concatenate(mini_batch.next_state)  # (batch_size, 16, 16, 8)
+        #next_state_batch = np.concatenate(mini_batch.next_state)  # (batch_size, 16, 16, 8)
+        non_final_next_states = np.concatenate([s for s in mini_batch.next_state if s is not None])
+
+        non_final_mask = np.array(tuple(map(lambda s: s is not None, mini_batch.next_state)))
 
         # 教師データの作成
-        pred = self.model.predict(next_state_batch).max(1).max(1)                   # (batch_size, 1)
-        next_state_values = pred.reshape(pred.shape[0])                             # (batch_size,)
+        pred = self.model(non_final_next_states, training=bn_train_mode).numpy()[:, :, :, 0].max(1).max(1)                   # (batch_size, 1)
+        next_state_values = np.zeros(batch_size)
+        next_state_values[non_final_mask] = pred.reshape(pred.shape[0])                             # (batch_size,)
         y_target = reward_batch.reshape(batch_size) + gamma * next_state_values     # (batch_size,)
         y_target = np.clip(y_target, -1.0, 1.0)
         y_target = tf.convert_to_tensor(y_target, dtype=tf.float32)                 # (batch_size,)
@@ -118,7 +122,7 @@ class QNetwork:
 
         # GradientTapeでy_predとlossを定義し、学習を実行する
         with tf.GradientTape() as tape:
-            y_pred = self.model(state_batch.astype(np.float32)) # (batch_size, 16, 16, 1)
+            y_pred = self.model(state_batch.astype(np.float32), training=True) # (batch_size, 16, 16, 1)
             y_pred = tf.gather_nd(y_pred, action_batch_idx)     # (batch_size,)
             loss = huberloss(y_target, y_pred)
 
@@ -238,7 +242,7 @@ class Actor:
         # 移動禁止箇所
         #ban = np.array( [ [4,8], [7,8], [7,7], [8,12], [8,9], [8,8], [8,7], [8,4], [9,9], [9,8], [12,8]  ] )
 
-        retTargetQs = mainQN.model.predict(state)             # (1, 16, 16, 1), (1, 1)
+        retTargetQs = mainQN.model.predict(state)             # (1, 16, 16, 1)
         #if bot_color == 'r' : print_state_At(retTargetQs, 0, 0)  # 予測結果を表示
         #retTargetQs = mainQN.model.predict(state)[0]          # (16, 16, 1)
         retTargetQs = retTargetQs[0]                          # (16, 16, 1)

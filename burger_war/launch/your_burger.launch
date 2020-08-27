@@ -14,6 +14,7 @@
       <param name="model_file" value="../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5"/>
       <param name="sim_flag" value="False"/>
       <param name="training" value="False"/>
+      <param name="bn_train_mode" value="False"/>
     </node>
 
     <!-- END sample program node -->

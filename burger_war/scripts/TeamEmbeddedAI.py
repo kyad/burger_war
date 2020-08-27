@@ -251,7 +251,7 @@ class RandomBot():
         return state
 
     # クラス生成時に最初に呼ばれる
-    def __init__(self, bot_name, color='r', model_file='../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5', sim_flag=False, training=False):
+    def __init__(self, bot_name, color='r', model_file='../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5', sim_flag=False, training=False, bn_train_mode=False):
         self.name     = bot_name                                        # bot name 
         self.vel_pub  = rospy.Publisher('cmd_vel', Twist, queue_size=1) # velocity publisher
         self.timer    = 0                                               # 対戦時間
@@ -321,6 +321,8 @@ class RandomBot():
         # Publish Q table as costmap for debug
         self.q_table_pub  = rospy.Publisher('q_table', OccupancyGrid, queue_size=10)
 
+        # flag of training mode for BatchNormailization
+        self.bn_train_mode = bn_train_mode
 
     # スコア情報の更新(war_stateのコールバック関数)
     def callback_war_state(self, data):
@@ -507,7 +509,7 @@ class RandomBot():
         # Action後の状態と報酬を取得
         next_state = self.getState()                                            # Action後の状態
         reward     = self.calc_reward()                                         # Actionの結果の報酬
-        if abs(reward) == 1 : next_state = np.zeros([1, 16, 16, 8])             # 試合終了時は次の状態はない
+        if abs(reward) == 1 : next_state = None                                 # 試合終了時は次の状態はない
 
         if in_time_limit == True:
             self.action2 = self.action
@@ -541,7 +543,7 @@ class RandomBot():
         if learn:
             for epoch in range(epochs):
                 #self.mainQN.replay(self.memory, batch_size, gamma, self.targetQN, self.my_color)
-                loss = self.mainQN.replay(self.memory, batch_size, gamma)
+                loss = self.mainQN.replay(self.memory, batch_size, gamma, self.bn_train_mode)
                 rospy.loginfo('epoch:{}, loss:{}'.format(epoch, loss))
         #self.targetQN.model.set_weights(self.mainQN.model.get_weights())
 
@@ -840,9 +842,19 @@ if __name__ == '__main__':
         except:
             training = False
 
+    # BatchNormalizationで訓練モードにするか推論モードにするかのフラグ。
+    # bn_train_mode = Trueでは、正規化がデータの平均と分散によって行われる。
+    # bn_train_mode = Falseでは、正規化が学習したパラメータによって行われる。
+    try:
+        bn_train_mode = rosparam.get_param('randomRun/bn_train_mode') # <type 'bool'>
+    except:
+        try:
+            bn_train_mode = rosparam.get_param('enemyRun/bn_train_mode') # <type 'bool'>
+        except:
+            bn_train_mode = False
 
     rospy.init_node('IntegAI_run')    # 初期化宣言 : このソフトウェアは"IntegAI_run"という名前
-    rospy.loginfo('**************** rside=%s model_file=%s sim_flag=%s training=%s' % (rside, model_file, sim_flag, training))
-    bot = RandomBot('Team Integ AI', color=rside, model_file=model_file, sim_flag=sim_flag, training=training)
+    rospy.loginfo('**************** rside=%s model_file=%s sim_flag=%s training=%s bn_train_mode=%s' % (rside, model_file, sim_flag, training, bn_train_mode))
+    bot = RandomBot('Team Integ AI', color=rside, model_file=model_file, sim_flag=sim_flag, training=training, bn_train_mode=bn_train_mode)
 
     bot.strategy()
