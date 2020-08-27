@@ -75,7 +75,7 @@ class QNetwork:
         #self.optimizer = Adam()
 
         #self.optimizer = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-        self.optimizer = tf.optimizers.SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True)
+        self.optimizer = tf.optimizers.SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
 
         #self.model.compile(loss=huberloss, optimizer=self.optimizer)
         #self.model.compile(loss=[prob_loss, reward_loss], optimizer=self.optimizer, loss_weights=[1.0, 1.0])

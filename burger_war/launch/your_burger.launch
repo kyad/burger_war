@@ -1,16 +1,19 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="side" default="r"/> <!-- "b" = blue side, "r" = red side  -->
-
+  <arg name="robot_namespace" default=""/>
     <!-- You can change control program  -->
 
 
     <!-- sample program node -->
 
     <include file="$(find burger_navigation)/launch/burger_navigation.launch">
+      <arg name="robot_namespace" default="$(arg robot_namespace)"/>
     </include>
 
     <node pkg="burger_war" type="TeamEmbeddedAI.py" name="randomRun" output="screen">
+      <param name="rside" value="$(arg side)" />
+      <param name="robot_namespace" value="$(arg robot_namespace)" />
       <param name="model_file" value="../catkin_ws/src/burger_war/burger_war/scripts/weight.hdf5"/>
       <param name="sim_flag" value="False"/>
       <param name="training" value="False"/>
