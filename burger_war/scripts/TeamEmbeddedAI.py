@@ -485,7 +485,7 @@ class RandomBot():
                 else:
                     action = np.array([ 0,  0])
                     if self.timer <= 2 :
-                        desti = np.array([ -0.60,  0.00])
+                        desti = np.array([ -0.70,  0.00])
                         yaw  = 0
                     elif self.timer <= 6 :
                         desti = np.array([  0.05,  0.55])
